@@ -34,4 +34,4 @@ For more details about how to use this framework refer to the [scripts](scripts)
 
 ## Extending and Contributing
 
-If you are interested into extending this project, please refer to the [Extending](../wiki/Extending) wiki page. If you wish to contribute contact me on GitHub.
+If you are interested into extending this project, please refer to the [Extending](../../wiki/Extending) wiki page. If you wish to contribute contact me on GitHub.
