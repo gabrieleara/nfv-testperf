@@ -835,6 +835,7 @@ function wait_schedule() {
 vswitch_list="pmd vpp ovs basicfwd snabb sriov linux-bridge"
 dimension_list="throughput latency latencyst"
 
+# TODO: READ AN ENVIRONMENT VARIABLE
 SCRIPT_DIR=`realpath $(dirname $0)`
 PMD=$HOME/testbed/install/dpdk-19.05/bin/testpmd
 BASICFWD=$HOME/testbed/install/dpdk-19.05/share/dpdk/examples/skeleton/x86_64-native-linuxapp-gcc/basicfwd
