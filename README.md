@@ -31,3 +31,7 @@ A few additional notes on the installation script:
 ## Usage
 
 For more details about how to use this framework refer to the [scripts](scripts) directory (which is NOT installed to a specific directory on the system, only framework dependencies and tools are installed).
+
+## Extending and Contributing
+
+If you are interested into extending this project, please refer to the [Extending](../wiki/Extending) wiki page. If you wish to contribute contact me on GitHub.
