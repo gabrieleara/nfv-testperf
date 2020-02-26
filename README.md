@@ -1,6 +1,12 @@
 # NFV-TestPerf: A Performance Testing Framework for High-Performance Inter-Container Communications
 
 NFV-TestPerf is a framework that can be used to evaluate the performance of various networking solutions for high-performance communications among Linux containers.
+ 
+## Description
+
+Detailed information about this framework, the motivations behind its development, and sample output from its application can be found in the published research paper:
+
+> G. Ara, T. Cucinotta, L. Abeni, C. Vitucci. "**Comparative Evaluation of Kernel Bypass Mechanisms for High-Performance Inter-Container Communications**," (to appear) in Proceedings of the 10th International Conference on Cloud Computing and Services Science (CLOSER 2020), May 7-9, 2020, Prague, Czech Republic.
 
 ## Installation
 
