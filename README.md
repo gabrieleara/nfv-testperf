@@ -1,5 +1,7 @@
 # NFV-TestPerf: A Performance Testing Framework for High-Performance Inter-Container Communications
 
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
 NFV-TestPerf is a framework that can be used to evaluate the performance of various networking solutions for high-performance communications among Linux containers.
  
 ## Description
@@ -41,3 +43,5 @@ For more details about how to use this framework refer to the [scripts](scripts)
 ## Extending and Contributing
 
 If you are interested into extending this project, please refer to the [Extending](../../wiki/Extending) wiki page. If you wish to contribute contact me on GitHub.
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. See [LICENSE.txt](LICENSE.txt) for more info.
