@@ -162,7 +162,7 @@ packages_install() {
     echo_section "Checking if required packages are installed"
 
     echo_action "APT INSTALL DEP"
-    sudo apt update && sudo apt install git build-essential libnuma-dev lxc pkg-config python3-pip python-pip automake -y
+    sudo apt update && sudo apt install git build-essential libnuma-dev lxc pkg-config python3-pip automake -y
 }
 
 ############# BUILDCORE FUNCTIONS #############
@@ -715,7 +715,7 @@ COLOR='\033[1;36m'
 COLOR_WARN='\033[1;35m'
 NC='\033[0m'
 
-DPDK_VERSION=19.05
+DPDK_VERSION=20.02
 OVS_VERSION=2.11.1
 
 ################## VARIABLES ##################
