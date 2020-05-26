@@ -140,6 +140,7 @@ NFV_SOCKET_SIMPLE_SIGNATURE(void, request_out_buffers, buffer_t *buffers, size_t
     }
 }
 
+// BUG: uses burst_size instead of howmany packets
 NFV_SOCKET_SIMPLE_SIGNATURE(ssize_t, send)
 {
     struct nfv_socket_simple *sself = (struct nfv_socket_simple *)(self);
@@ -221,13 +222,37 @@ NFV_SOCKET_SIMPLE_SIGNATURE(ssize_t, recv, buffer_t *buffers, size_t size, size_
 // sendmsg/sendmmsg, because the headers are updated by recvmsg/recvmmsg calls
 NFV_SOCKET_SIMPLE_SIGNATURE(ssize_t, send_back)
 {
-    // TODO:
-    UNUSED(self);
+    // TODO: CHECK A LOT OF STUFF
+    struct nfv_socket_simple *sself = (struct nfv_socket_simple *)(self);
+    struct rte_ipv4_hdr *pkt_ip_hdr;
+
+    // If using raw sockets, swap addresses information too
+    if (sself->is_raw)
+    {
+        for (size_t i = 0; i < howmany; ++i)
+        {
+            swap_ether_addr((struct rte_ether_hdr *)(sself->packets[i] + OFFSET_PKT_ETHER));
+            swap_ipv4_addr((struct rte_ipv4_hdr *)(sself->packets[i] + OFFSET_PKT_IPV4));
+            swap_udp_port((struct rte_udp_hdr *)(sself->packets[i] + OFFSET_PKT_UDP));
+
+            pkt_ip_hdr = dpdk_pkt_offset(sself->packets[i], struct rte_ipv4_hdr *, OFFSET_PKT_IPV4);
+            pkt_ip_hdr->hdr_checksum = ipv4_hdr_checksum(pkt_ip_hdr);
+        }
+    }
+    else
+    {
+        // TODO: Should work automatically, right?
+    }
+
+    // TODO: set how many packets are meant to be sent
+
+    NFV_CALL(self, send);
+
     return 0;
 }
 
 NFV_SOCKET_SIMPLE_SIGNATURE(void, free_buffers)
 {
-    // TODO: For now this could ne a NOP for simple sockets
+    // TODO: For now this could be a NOP for simple sockets
     UNUSED(self);
 }
