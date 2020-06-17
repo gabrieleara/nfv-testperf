@@ -3,19 +3,20 @@
 #endif
 
 #include "nfv_socket_simple.h"
+#include "config.h"
 
 #include <sys/socket.h>
 
 #define UNUSED(x) ((void)x)
 
-NFV_SOCKET_SIMPLE_SIGNATURE(void, init, nfv_conf_t conf)
+NFV_SOCKET_SIMPLE_SIGNATURE(void, init, config_ptr conf)
 {
     // TODO: must know the type of socket to be initialized
     struct nfv_socket_simple *sself = (struct nfv_socket_simple *)(self);
 
     // Initialize constant variables
     sself->sock_fd = conf->sock_fd;
-    sself->is_raw = conf->is_raw;
+    sself->is_raw = (conf->sock_type & NFV_SOCK_RAW) != 0;
     sself->use_mmsg = conf->use_mmsg;
 
     sself->used_size = (sself->is_raw) ? sself->super.packet_size : sself->super.payload_size;
@@ -54,7 +55,7 @@ NFV_SOCKET_SIMPLE_SIGNATURE(void, init, nfv_conf_t conf)
     // Initialize the common header
     memset(sself->frame_hdr, 0, sizeof(sself->frame_hdr));
 
-    // TODO: skilling a lot of memsets, check if this is cool or not FIXME: it
+    // TODO: skipping a lot of memsets, check if this is cool or not FIXME: it
     // is NOT cool to skip if touch_data is set to false
 
     if (sself->use_mmsg)

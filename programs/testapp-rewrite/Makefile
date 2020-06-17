@@ -18,12 +18,15 @@ APP          = testapp
 # SRCS-y      += main.c common.c stats.c timestamp.c dpdk.c
 # SRCS-y      += server.c client.c clientst.c send.c recv.c
 # SRCS-y      += dpdk-server.c dpdk-client.c dpdk-clientst.c dpdk-send.c dpdk-recv.c
-SRCS-y      += loops.c stats.c timestamp.c nfv_socket_simple.c
+
+### SRCS-y      += loops.c stats.c timestamp.c nfv_socket_simple.c
+SRCS-y      += main.c config.c commands.c timestamp.c loops-dummy.c stats.c
 
 # Extra compilation and preprocessing flags
 CFLAGS      += -iquote $(THIS_DIR)/inc
 CFLAGS      += -Wall -Wextra -pedantic -Werror -march=native
-CFLAGS      += -O3 # -O0 -ggdb
+CFLAGS      += -O3
+CLFAGS      += -O0 -ggdb # NOTICE: this is only for DEBUG PURPOSES!
 CFLAGS      += $(WERROR_FLAGS)
 
 include $(RTE_SDK)/mk/rte.extapp.mk

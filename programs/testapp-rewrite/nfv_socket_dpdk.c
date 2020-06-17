@@ -8,7 +8,7 @@
 
 #define UNUSED(x) ((void)x)
 
-NFV_SOCKET_DPDK_SIGNATURE(void, init, nfv_conf_t conf)
+NFV_SOCKET_DPDK_SIGNATURE(void, init, config_ptr conf)
 {
     // TODO: must know the type of socket to be initialized
     struct nfv_socket_dpdk *sself = (struct nfv_socket_dpdk *)(self);

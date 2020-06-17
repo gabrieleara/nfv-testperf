@@ -5,6 +5,7 @@
 /* -------------------------------- INCLUDES -------------------------------- */
 
 #include <stdbool.h>
+#include <signal.h>
 
 #include "timestamp.h"
 #include "nfv_socket.h"
@@ -21,14 +22,39 @@
     ;        \
     ;
 
+/* -------------------------------- GLOBALS --------------------------------- */
+
+struct stats *stats_ptr = NULL;
+
 /* --------------------------- UTILITY  FUNCTIONS --------------------------- */
+
+/* --------------------------- LOOP EXIT FUNCTION --------------------------- */
+
+void handle_sigint(int sig)
+{
+    printf("\nCaught signal %s!\n", strsignal(sig));
+
+    if (sig == SIGINT)
+    {
+        if (stats_ptr != NULL)
+        {
+            // Print average stats
+            printf("-------------------------------------\n");
+            printf("FINAL STATS\n");
+
+            stats_print_all(stats_ptr);
+        }
+
+        exit(EXIT_SUCCESS);
+    }
+}
 
 /* ----------------------------- LOOP FUNCTIONS ----------------------------- */
 
 /**
  * Infinite loop that updates the global tsc timer.
  */
-void *tsc_loop(void *arg)
+void tsc_loop(void *arg)
 {
     UNUSED(arg);
 
@@ -48,7 +74,7 @@ void *tsc_loop(void *arg)
  */
 void send_loop(struct config *conf)
 {
-    nfv_socket_t socket = nfv_get_socket(conf);
+    //nfv_socket_ptr socket = nfv_get_socket(conf);
 
     /* ----------------------------- Constants ------------------------------ */
     const tsc_t tsc_hz = tsc_get_hz();

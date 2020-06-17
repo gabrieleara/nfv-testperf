@@ -3,6 +3,8 @@
 
 #include "nfv_socket.h"
 
+#include <stdbool.h>
+
 /* --------------------------- METHOD  PROTOTYPES --------------------------- */
 
 // typedef struct nfv_socket_simple *nfv_socket_simple_t;
@@ -49,7 +51,7 @@ struct nfv_socket_simple {
 #define NFV_SOCKET_SIMPLE_SIGNATURE(return_t, name, ...) \
     NFV_METHOD_SIGNATURE(return_t, socket_##name, ##__VA_ARGS__)
 
-extern NFV_SOCKET_SIMPLE_SIGNATURE(void, init, nfv_conf_t conf);
+extern NFV_SOCKET_SIMPLE_SIGNATURE(void, init, config_ptr conf);
 
 extern NFV_SOCKET_SIMPLE_SIGNATURE(void, request_out_buffers, buffer_t *buffers, size_t size, size_t howmany);
 

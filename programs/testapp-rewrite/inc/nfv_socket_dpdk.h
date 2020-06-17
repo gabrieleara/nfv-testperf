@@ -35,7 +35,7 @@ struct nfv_socket_dpdk {
 #define NFV_SOCKET_DPDK_SIGNATURE(return_t, name, ...) \
     NFV_METHOD_SIGNATURE(return_t, socket_##name, ##__VA_ARGS__)
 
-extern NFV_SOCKET_DPDK_SIGNATURE(void, init, nfv_conf_t conf);
+extern NFV_SOCKET_DPDK_SIGNATURE(void, init, config_ptr conf);
 
 extern NFV_SOCKET_DPDK_SIGNATURE(void, request_out_buffers, buffer_t *buffers, size_t size, size_t howmany);
 

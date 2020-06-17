@@ -13,20 +13,7 @@ typedef uint8_t byte_t;
 typedef byte_t *buffer_t;
 
 typedef struct nfv_socket *nfv_socket_ptr;
-
-struct nfv_configuration
-{
-    size_t packet_size;
-    size_t burst_size;
-    size_t desired_rate;
-    bool use_dpdk;
-    bool use_mmsg;
-    bool is_raw;
-    int sock_fd;
-    // TODO: more attributes
-};
-
-typedef struct nfv_configuration *nfv_conf_t;
+typedef struct config *config_ptr;
 
 /* ----------------------- CLASS FUNCTION PROTOTYPES ------------------------ */
 
@@ -38,8 +25,8 @@ typedef struct nfv_configuration *nfv_conf_t;
 #define NFV_METHOD_POINTER(return_t, name, ...) \
     return_t (*nfv_socket_##name##_t)(nfv_socket_ptr self, ##__VA_ARGS__)
 
-#define NFV_METHOD_DECLARATION(return_t, name, ...)                    \
-    static inline NFV_METHOD_SIGNATURE(return_t, name, ##__VA_ARGS__); \
+#define NFV_METHOD_DECLARATION(return_t, name, ...)             \
+    extern NFV_METHOD_SIGNATURE(return_t, name, ##__VA_ARGS__); \
     typedef NFV_METHOD_POINTER(return_t, name, ##__VA_ARGS__)
 
 /**
@@ -49,7 +36,7 @@ typedef struct nfv_configuration *nfv_conf_t;
  * bytes of payload.
  */
 // void nfv_socket_init(nfv_socket_ptr self, size_t packet_size, size_t burst_size);
-NFV_METHOD_DECLARATION(void, init, nfv_conf_t conf);
+NFV_METHOD_DECLARATION(void, init, config_ptr conf);
 
 /**
  * Requests `burst_size` data buffers associated with the provided socket to be
@@ -101,13 +88,17 @@ NFV_METHOD_DECLARATION(ssize_t, send_back);
 //void nfv_free_buffers(nfv_socket_ptr self);
 NFV_METHOD_DECLARATION(void, free_buffers);
 
-/* --------------------------- METHOD  PROTOTYPES --------------------------- */
+/* ---------------------------- CLASS DEFINITION ---------------------------- */
 
-enum nfv_socket_ptrype
+enum nfv_sock_type
 {
-    NFV_SOCK_SIMPLE,
-    NFV_SOCK_DPDK,
+    NFV_SOCK_NONE  = 0,     /* This is only for error-checking */
+    NFV_SOCK_DGRAM = 0x1,
+    NFV_SOCK_RAW   = 0x2,
+    NFV_SOCK_DPDK  = 0x4,
 };
+
+#define NFV_SOCK_SIMPLE (NFV_SOCK_DGRAM | NFV_SOCK_RAW)
 
 struct nfv_socket
 {
@@ -120,7 +111,7 @@ struct nfv_socket
     nfv_socket_send_back_t send_back;
     nfv_socket_free_buffers_t free_buffers;
 
-    /* ---------------------------- Private data ---------------------------- */
+    /* --------------------------- "Private" data --------------------------- */
 
     /* const */ size_t packet_size;
     /* const */ size_t payload_size;
@@ -128,43 +119,5 @@ struct nfv_socket
 
     buffer_t *payloads;
 };
-
-/* ----------------------- CLASS FUNCTION DEFINITIONS ----------------------- */
-
-// This is the only one that behaves differently, in the sense that it is
-// defined like this and not as a wrapper of an init method
-NFV_METHOD_SIGNATURE(void, init, nfv_conf_t conf)
-{
-    self->packet_size = conf->packet_size;
-    self-> burst_size = conf->burst_size;
-    self->payload_size = self->packet_size - PKT_HEADER_SIZE;
-
-    self->payloads = malloc(sizeof(buffer_t *) * self->burst_size);
-}
-
-NFV_METHOD_SIGNATURE(void, request_out_buffers, buffer_t *buffers, size_t packet_size, size_t burst_size)
-{
-    NFV_CALL(self, request_out_buffers, buffers, packet_size, burst_size);
-}
-
-NFV_METHOD_SIGNATURE(ssize_t, send)
-{
-    return NFV_CALL(self, send);
-}
-
-NFV_METHOD_SIGNATURE(ssize_t, recv, buffer_t *buffers, size_t packet_size, size_t burst_size)
-{
-    return NFV_CALL(self, recv, buffers, packet_size, burst_size);
-}
-
-NFV_METHOD_SIGNATURE(ssize_t, send_back)
-{
-    return NFV_CALL(self, send_back);
-}
-
-NFV_METHOD_SIGNATURE(void, free_buffers)
-{
-    NFV_CALL(self, free_buffers);
-}
 
 #endif /* NFV_SOCKET_H */
