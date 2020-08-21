@@ -49,7 +49,7 @@ struct nfv_socket_simple {
 /* --------------------------- METHOD  PROTOTYPES --------------------------- */
 
 #define NFV_SOCKET_SIMPLE_SIGNATURE(return_t, name, ...) \
-    NFV_METHOD_SIGNATURE(return_t, socket_##name, ##__VA_ARGS__)
+    NFV_METHOD_SIGNATURE(return_t, simple_##name, ##__VA_ARGS__)
 
 extern NFV_SOCKET_SIMPLE_SIGNATURE(void, init, config_ptr conf);
 

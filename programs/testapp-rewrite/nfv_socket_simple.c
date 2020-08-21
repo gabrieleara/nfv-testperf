@@ -31,7 +31,7 @@ NFV_SOCKET_SIMPLE_SIGNATURE(void, init, config_ptr conf)
 
     for (size_t i = 0; i < sself->super.burst_size; ++i)
     {
-        sself->packets[i] = malloc(sizeof(byte_t) * sself->super.packet_size);
+        sself->packets[i] = malloc(sizeof(byte_t) * sself->super.packet_size); // FIXME: change to used_size
     }
 
     // These two are used for sendmmsg/recvmmsg API (both normal and raw
@@ -93,9 +93,10 @@ NFV_SOCKET_SIMPLE_SIGNATURE(void, init, config_ptr conf)
     if (sself->is_raw)
     {
         /* For RAW sockets we need to build a frame header, the same for each
-        * packet
-        */
-        dpdk_setup_pkt_headers(&sself->pkt_eth_hdr, &sself->pkt_ip_hdr, &sself->pkt_udp_hdr, conf);
+         * packet
+         */
+        // TODO: implement this
+        // dpdk_setup_pkt_headers(&sself->pkt_eth_hdr, &sself->pkt_ip_hdr, &sself->pkt_udp_hdr, conf);
         memcpy(sself->frame_hdr + OFFSET_PKT_ETHER, &sself->pkt_eth_hdr, sizeof(struct rte_ether_hdr));
         memcpy(sself->frame_hdr + OFFSET_PKT_IPV4, &sself->pkt_ip_hdr, sizeof(struct rte_ipv4_hdr));
         memcpy(sself->frame_hdr + OFFSET_PKT_UDP, &sself->pkt_udp_hdr, sizeof(struct rte_udp_hdr));
@@ -132,6 +133,9 @@ NFV_SOCKET_SIMPLE_SIGNATURE(void, init, config_ptr conf)
 // otherwise the send would send too many packets
 NFV_SOCKET_SIMPLE_SIGNATURE(void, request_out_buffers, buffer_t *buffers, size_t size, size_t howmany)
 {
+    // TODO:
+    UNUSED(size);
+
     struct nfv_socket_simple *sself = (struct nfv_socket_simple *)(self);
 
     // TODO: ASSUMES howmany <= burst_size
@@ -164,11 +168,16 @@ NFV_SOCKET_SIMPLE_SIGNATURE(ssize_t, send)
             // memcpy(sself->packets[i], sself->frame_hdr, PKT_HEADER_SIZE);
 
             // TODO: transition to sendmdg
-            int res = send(sself->sock_fd, sself->packets[i], sself->used_size, 0);
-            if (res == sself->used_size)
+            ssize_t res = send(sself->sock_fd, sself->packets[i], sself->used_size, 0);
+            if (res > 0 && (size_t)res == sself->used_size)
             {
                 ++num_sent;
             }
+            /*else
+            {
+                fprintf(stderr, "Uh-oh, something went wrong: %s", strerror(errno));
+                exit(EXIT_FAILURE);
+            }*/
         }
     }
 
@@ -180,6 +189,10 @@ NFV_SOCKET_SIMPLE_SIGNATURE(ssize_t, send)
 // that the destination address is this address
 NFV_SOCKET_SIMPLE_SIGNATURE(ssize_t, recv, buffer_t *buffers, size_t size, size_t howmany)
 {
+    // TODO:
+    UNUSED(size);
+    UNUSED(howmany);
+
     struct nfv_socket_simple *sself = (struct nfv_socket_simple *)(self);
 
     int num_recv = 0;
@@ -204,15 +217,20 @@ NFV_SOCKET_SIMPLE_SIGNATURE(ssize_t, recv, buffer_t *buffers, size_t size, size_
             // FIXME: why was this payload_len?                              |
             //                                                              \ /
             //                                                               °
-            int res = recv(sself->sock_fd, sself->packets[num_recv], sself->used_size, 0);
+            ssize_t res = recv(sself->sock_fd, sself->packets[num_recv], sself->used_size, 0);
 
             // In UDP/RAW you either receive it all or not receive anything at
             // all
-            if (res == sself->used_size)
+            if (res > 0 && (size_t)res == sself->used_size)
             {
                 ++num_recv;
             }
         }
+    }
+
+    for (int i = 0; i < num_recv; ++i)
+    {
+        buffers[i] = sself->super.payloads[i];
     }
 
     return num_recv;
@@ -230,14 +248,17 @@ NFV_SOCKET_SIMPLE_SIGNATURE(ssize_t, send_back)
     // If using raw sockets, swap addresses information too
     if (sself->is_raw)
     {
-        for (size_t i = 0; i < howmany; ++i)
+        // TODO:
+        for (size_t i = 0; i < 1000 /*howmany*/; ++i)
         {
-            swap_ether_addr((struct rte_ether_hdr *)(sself->packets[i] + OFFSET_PKT_ETHER));
-            swap_ipv4_addr((struct rte_ipv4_hdr *)(sself->packets[i] + OFFSET_PKT_IPV4));
-            swap_udp_port((struct rte_udp_hdr *)(sself->packets[i] + OFFSET_PKT_UDP));
+            // TODO:
+            UNUSED(pkt_ip_hdr);
+            // swap_ether_addr((struct rte_ether_hdr *)(sself->packets[i] + OFFSET_PKT_ETHER));
+            // swap_ipv4_addr((struct rte_ipv4_hdr *)(sself->packets[i] + OFFSET_PKT_IPV4));
+            // swap_udp_port((struct rte_udp_hdr *)(sself->packets[i] + OFFSET_PKT_UDP));
 
-            pkt_ip_hdr = dpdk_pkt_offset(sself->packets[i], struct rte_ipv4_hdr *, OFFSET_PKT_IPV4);
-            pkt_ip_hdr->hdr_checksum = ipv4_hdr_checksum(pkt_ip_hdr);
+            // pkt_ip_hdr = dpdk_pkt_offset(sself->packets[i], struct rte_ipv4_hdr *, OFFSET_PKT_IPV4);
+            // pkt_ip_hdr->hdr_checksum = ipv4_hdr_checksum(pkt_ip_hdr);
         }
     }
     else

@@ -33,7 +33,7 @@ struct nfv_socket_dpdk {
 /* --------------------------- METHOD  PROTOTYPES --------------------------- */
 
 #define NFV_SOCKET_DPDK_SIGNATURE(return_t, name, ...) \
-    NFV_METHOD_SIGNATURE(return_t, socket_##name, ##__VA_ARGS__)
+    NFV_METHOD_SIGNATURE(return_t, dpdk_##name, ##__VA_ARGS__)
 
 extern NFV_SOCKET_DPDK_SIGNATURE(void, init, config_ptr conf);
 

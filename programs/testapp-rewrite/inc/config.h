@@ -59,9 +59,10 @@ struct dpdk_conf
 
 struct config
 {
-    rate_t rate;     /* Desired packet rate [pps] */
-    size_t pkt_size; /* Packet size [bytes] */
-    size_t bst_size; /* Burst size [packets] */
+    rate_t rate;         /* Desired packet rate [pps] */
+    size_t pkt_size;     /* Packet size [bytes] */
+    size_t payload_size; /* Payload size [bytes] */
+    size_t bst_size;     /* Burst size [packets] */
 
     bool use_block; /* Whether the sockets shall be configured to be blocking or non-blocking [system socket only] */
     bool use_mmsg;  /* Whether the *mmsg variants of kernel socket system calls shall be used [system socket only] */
@@ -71,15 +72,15 @@ struct config
 
     struct portaddr local;  /* The addresses (IP and MAC) and UDP port number assigned to this application */
     struct portaddr remote; /* The addresses (IP and MAC) and UDP port number assigned to the remote application (if any) */
-    
+
     enum nfv_sock_type sock_type; /* The type of NFV socket requested by the application */
-    
+
     /* ------------ NFV sockets custom configuration parameters ------------- */
 
-    int sock_fd;  /* Socket file descriptor (NFC_SOCK_DGRAM or NFV_SOCK_RAW only) */
-    
+    int sock_fd; /* Socket file descriptor (NFC_SOCK_DGRAM or NFV_SOCK_RAW only) */
+
     char local_interf[16]; /* The name of the local interface to be used (NFV_SOCK_RAW only) */
-    
+
     struct dpdk_conf dpdk; /* DPDK-related configuration only (NFC_SOCK_DPDK only) */
 };
 
@@ -106,5 +107,7 @@ extern void config_initialize(struct config *conf, const struct config_defaults 
 extern int config_parse_arguments(struct config *conf, int argc, char *argv[]);
 extern int config_initialize_socket(struct config *conf, int argc, char *argv[]);
 extern void config_print(struct config *conf);
+
+#define PKT_SIZE_TO_PAYLOAD(pkt_size) (pkt_size - PKT_HEADER_SIZE)
 
 #endif /* CONFIG_H */

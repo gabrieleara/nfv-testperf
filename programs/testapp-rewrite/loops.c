@@ -9,8 +9,10 @@
 
 #include "timestamp.h"
 #include "nfv_socket.h"
+#include "config.h"
 #include "loops.h"
 #include "stats.h"
+#include "pkt_util.h"
 
 /* -------------------------------- DEFINES --------------------------------- */
 
@@ -74,17 +76,17 @@ void tsc_loop(void *arg)
  */
 void send_loop(struct config *conf)
 {
-    //nfv_socket_ptr socket = nfv_get_socket(conf);
+    nfv_socket_ptr socket = nfv_socket_factory_get(conf);
 
     /* ----------------------------- Constants ------------------------------ */
     const tsc_t tsc_hz = tsc_get_hz();
     const tsc_t tsc_out = tsc_hz;
-    const tsc_t tsc_incr = tsc_hz * conf->bst_size / conf->pkt_rate;
+    const tsc_t tsc_incr = tsc_hz * conf->bst_size / conf->rate;
 
     /* ------------------- Variables and data structures -------------------- */
 
     // Pointer to payload buffers
-    buffers_t buffers[conf->bst_size];
+    buffer_t buffers[conf->bst_size];
 
     // Timers and counters
     tsc_t tsc_cur, tsc_prev, tsc_next;
@@ -99,17 +101,19 @@ void send_loop(struct config *conf)
 
     /* --------------------------- Initialization --------------------------- */
 
-    nfv_socket_init(socket, conf->payload_size, conf->bst_size);
-
     /* ------------------ Infinite loop variables and body ------------------ */
 
-    tsc_cur = tsc_next = tsc_get_last();
+    // FIXME: change the pointed function to get the tsc from the one that
+    // updates every time to the one that simply reads the shared variable
+    // if the client is used instead of the sender (tsc_get_last())
+
+    tsc_prev = tsc_cur = tsc_next = tsc_get_update();
 
     int num_sent;
 
     for (ever)
     {
-        tsc_cur = tsc_get_last(); // FIXME: What about tsc_get_update for sender application?
+        tsc_cur = tsc_get_update(); // FIXME: What about tsc_get_update for sender application?
 
         // If more than a second elapsed
         if (tsc_cur - tsc_prev > tsc_out)
@@ -140,7 +144,7 @@ void send_loop(struct config *conf)
             // Request buffers where to write our packets from the library The
             // library will fill header information if necessary (example.
             // SOCK_RAW or DPDK)
-            nfv_request_out_buffers(socket, buffers, conf->payload_size, conf->bst_size);
+            nfv_socket_request_out_buffers(socket, buffers, conf->payload_size, conf->bst_size);
 
             // Put payload data in each packet
             for (size_t i = 0; i < conf->bst_size; ++i)
@@ -152,16 +156,16 @@ void send_loop(struct config *conf)
                 // If data should be produced, fill each packet
                 if (conf->touch_data)
                 {
-                    produce_data_offset(buffers[i], sizeof(tsc_cur), conf->payload_size);
+                    produce_data_offset(buffers[i], conf->payload_size - sizeof(tsc_cur), sizeof(tsc_cur));
                 }
 
-                tsc_cur = tsc_get_last();
+                tsc_cur = tsc_get_update();
                 put_i64_offset(buffers[i], 0, tsc_cur);
             }
 
             // Use one single call to send data (the library will then convert
             // to the appropriate single or multiple calls)
-            int num_sent = nfv_send(socket);
+            num_sent = nfv_socket_send(socket);
 
             // Errors are considered all dropped packets
             if (num_sent < 0)
@@ -183,7 +187,7 @@ void send_loop(struct config *conf)
 void recv_loop(struct config *conf)
 {
     // TODO:
-    nfv_socket_t socket = nfv_get_socket(conf);
+    nfv_socket_ptr socket = nfv_socket_factory_get(conf);
 
     /* ----------------------------- Constants ------------------------------ */
 
@@ -194,7 +198,7 @@ void recv_loop(struct config *conf)
     /* ------------------- Variables and data structures -------------------- */
 
     // Pointer to payload buffers
-    buffers_t buffers[conf->bst_size];
+    buffer_t buffers[conf->bst_size];
 
     // Timers and counters
     tsc_t tsc_cur, tsc_prev;
@@ -209,11 +213,9 @@ void recv_loop(struct config *conf)
 
     /* --------------------------- Initialization --------------------------- */
 
-    nfv_socket_init(socket, conf->payload_size, conf->bst_size);
-
     /* ------------------ Infinite loop variables and body ------------------ */
 
-    int num_recv;
+    int num_recv, num_ok;
 
     tsc_cur = tsc_prev = tsc_get_update();
 
@@ -240,18 +242,22 @@ void recv_loop(struct config *conf)
             tsc_prev = tsc_cur;
         }
 
-        num_recv = nfv_recv(socket, buffers, conf->payload_size, conf->bst_size);
+        num_recv = nfv_socket_recv(socket, buffers, conf->payload_size, conf->bst_size);
 
         // If data should be consumed, do that
         if (conf->touch_data)
         {
+            num_ok = 0;
             for (int i = 0; i < num_recv; ++i)
             {
-                consume_data(buffers[i], sizeof(tsc_t), conf->payload_size);
+                if (consume_data_offset(buffers[i], conf->payload_size - sizeof(tsc_t), sizeof(tsc_t)))
+                    ++num_ok;
             }
+
+            num_recv = num_ok;
         }
 
-        nfv_free_buffers(socket);
+        nfv_socket_free_buffers(socket);
 
         if (num_recv < 0)
         {
@@ -266,7 +272,7 @@ void recv_loop(struct config *conf)
 
 void pong_loop(struct config *conf)
 {
-    nfv_socket_t socket = nfv_get_socket(conf);
+    nfv_socket_ptr socket = nfv_socket_factory_get(conf);
 
     /* ----------------------------- Constants ------------------------------ */
     const tsc_t tsc_hz = tsc_get_hz();
@@ -275,7 +281,7 @@ void pong_loop(struct config *conf)
     /* ------------------- Variables and data structures -------------------- */
 
     // Pointer to payload buffers
-    buffers_t buffers[conf->bst_size];
+    buffer_t buffers[conf->bst_size];
 
     // Timers and counters
     tsc_t tsc_cur, tsc_prev;
@@ -290,8 +296,6 @@ void pong_loop(struct config *conf)
     struct stats_data_delay stats_period = {0, 0};
 
     // --------------------------- Initialization --------------------------- //
-
-    nfv_socket_init(socket, conf->payload_size, conf->bst_size);
 
     // ------------------ Infinite loop variables and body ------------------ //
 
@@ -337,7 +341,7 @@ void pong_loop(struct config *conf)
             tsc_pkt = get_i64_offset(buffers[i], 0);
             if (conf->touch_data)
             {
-                consume_data_offset(buffers[i], sizeof(tsc_t), data_len);
+                consume_data_offset(buffers[i], conf->payload_size - sizeof(tsc_t), sizeof(tsc_t));
             }
 
             tsc_cur = tsc_get_last();
@@ -359,13 +363,14 @@ void pong_loop(struct config *conf)
             }
         }
 
-        nfv_free_buffers(socket);
+        nfv_socket_free_buffers(socket);
     }
 
     __builtin_unreachable();
 }
 
-void server_loop(struct config *conf) {
+void server_loop(struct config *conf)
+{
     //TODO:
     UNUSED(conf);
     __builtin_unreachable();

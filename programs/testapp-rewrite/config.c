@@ -32,6 +32,7 @@
 static const struct config CONFIG_STRUCT_INITIALIZER = {
     .rate = DEFAULT_RATE,
     .pkt_size = DEFAULT_PKT_SIZE,
+    .payload_size = PKT_SIZE_TO_PAYLOAD(DEFAULT_PKT_SIZE),
     .bst_size = DEFAULT_BST_SIZE,
 
     .use_block = false,
@@ -132,11 +133,11 @@ static inline bool check_dash(char *s)
  * been requested to the application.
  *
  * \param argc the number of arguments.
- * 
+ *
  * \param argv the array of arguments.
- * 
+ *
  * \param conf the pointer to the program configuration structure.
- * 
+ *
  * \param argind
  * the index of the first argument to be processed.
  *
@@ -161,6 +162,7 @@ static inline int options_parse(
             break;
         case 'p':
             conf->pkt_size = atoi(optarg);
+            conf->payload_size = PKT_SIZE_TO_PAYLOAD(conf->pkt_size);
             break;
         case 'b':
             conf->bst_size = atoi(optarg);
@@ -212,7 +214,7 @@ static inline void addr_port_number_set(struct sockaddr_in *addr, int port)
 
 /**
  * Get the port number from the given address structure.
- * 
+ *
  * \return the requested port number.
  * */
 static inline int addr_port_number_get(const struct sockaddr_in *addr)
@@ -243,7 +245,7 @@ static inline int addr_ip_set(struct sockaddr_in *addr, const char *str)
  * Construct an IPv4 address string from the given data structure.
  *
  * NOTICE: assumes that str argument to be at least INET_ADDRSTRLEN chars long.
- * 
+ *
  * \return 0 on success, an error code otherwise.
  * */
 static inline int addr_ip_get(char *str, const struct sockaddr_in *addr)
@@ -288,7 +290,7 @@ static inline int addr_mac_set(struct sockaddr_ll *addr, const char *str, const 
 
 /**
  * Construct a MAC address string from the given data structure.
- * 
+ *
  * NOTICE: assumes that str argument is big enough to fit a MAC address string
  * and the \0 at the end.
  *
@@ -320,11 +322,11 @@ static inline int addr_mac_get(char *str, const struct sockaddr_ll *addr)
  * some arguments may be optional, depending on the command to execute.
  *
  * \param argc the number of arguments.
- * 
+ *
  * \param argv the array of arguments.
- * 
+ *
  * \param conf the pointer to the program configuration structure.
- * 
+ *
  * \param argind the index of the first argument to be processed.
  *
  * \return the index of the last non-processed argument.
@@ -400,18 +402,17 @@ static inline int args_parse(
  *
  * \param sock_fd will be filled with the actual file descriptor of the opened
  * socket.
- * 
+ *
  * \param local_addr points to a pair ip address/port number to be
  * binded with the new socket.
- * 
+ *
  * \param flags used to set options on the new
  * socket, optional, see fcntl.
  *
  * \return 0 on success, non-zero otherwise.
  * */
 static inline int sock_create_dgram(
-    int *sock_fd,
-    const struct sockaddr_in *local_addr,
+    struct config *conf,
     uint32_t flags)
 {
     int res;
@@ -423,26 +424,46 @@ static inline int sock_create_dgram(
         return res;
     }
 
-    *sock_fd = res;
+    conf->sock_fd = res;
 
-    res = bind(*sock_fd, (const struct sockaddr *)local_addr, sizeof(*local_addr));
+    res = bind(conf->sock_fd, (const struct sockaddr *)&conf->local.ip, sizeof(conf->local.ip));
     if (res < 0)
     {
         perror("Could not bind to local ip/port");
-        close(*sock_fd);
+        close(conf->sock_fd);
         return res;
     }
+
+    // FIXME: For now I assume connected sockets, later I'll remove this
+    // assumption for RAW or SENDMMSG ones
+    // if (toconnect)
+    // {
+    res = connect(conf->sock_fd, (struct sockaddr *)&conf->remote.ip, sizeof(conf->remote.ip));
+    if (res < 0)
+    {
+        perror("Could not connect to remote ip/port");
+        close(conf->sock_fd);
+        return res;
+    }
+    // }
+
+    // If the socket should be non blocking, set it so, otherwise remove the
+    // flag from the flags
+    if (!conf->use_block)
+        flags |= O_NONBLOCK;
+    else
+        flags &= ~O_NONBLOCK;
 
     // TODO: check if this should be before or after bind or it does not mind
     if (flags)
     {
-        int oldflags = fcntl(*sock_fd, F_GETFL, 0);
-        res = fcntl(*sock_fd, F_SETFL, oldflags | flags);
+        int oldflags = fcntl(conf->sock_fd, F_GETFL, 0);
+        res = fcntl(conf->sock_fd, F_SETFL, oldflags | flags);
 
         if (res < 0)
         {
             perror("Could not set file descriptor flags");
-            close(*sock_fd);
+            close(conf->sock_fd);
 
             return res;
         }
@@ -456,10 +477,10 @@ static inline int sock_create_dgram(
  *
  * \param sock_fd will be filled with the actual file descriptor of the opened
  * socket.
- * 
+ *
  * \param ifname the name of the interface to be used with the new raw
  * socket.
- * 
+ *
  * \param flags used to set options on the new socket, optional, see
  * fcntl.
  *
@@ -525,14 +546,14 @@ static inline int sock_create_raw(
 
 /**
  * Initialize configuration with the given default parameters.
- * 
+ *
  * NOTICE: this will revert a configuration to default parameters even in the
  * case in which no defaults are supplied (NULL).
- * 
+ *
  * \param conf the configuration to be initialized.
  * \param defaults values to be used to fill mac address, ip address and port
- * numbers, if provided. Can be NULL. 
- * 
+ * numbers, if provided. Can be NULL.
+ *
  * */
 void config_initialize(struct config *conf, const struct config_defaults *defaults)
 {
@@ -614,7 +635,7 @@ int config_initialize_socket(struct config *conf, int argc, char *argv[])
     {
     case NFV_SOCK_DGRAM:
         // TODO: additional flags?
-        return sock_create_dgram(&conf->sock_fd, &conf->local.ip, 0); // TODO: initialize data structures too
+        return sock_create_dgram(conf, 0); // TODO: initialize data structures too
     case NFV_SOCK_RAW:
         // TODO: additional flags?
         return sock_create_raw(&conf->sock_fd, conf->local_interf, 0); // TODO: initialize data structures too

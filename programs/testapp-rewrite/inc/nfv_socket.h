@@ -26,7 +26,7 @@ typedef struct config *config_ptr;
     return_t (*nfv_socket_##name##_t)(nfv_socket_ptr self, ##__VA_ARGS__)
 
 #define NFV_METHOD_DECLARATION(return_t, name, ...)             \
-    extern NFV_METHOD_SIGNATURE(return_t, name, ##__VA_ARGS__); \
+    NFV_METHOD_SIGNATURE(return_t, name, ##__VA_ARGS__); \
     typedef NFV_METHOD_POINTER(return_t, name, ##__VA_ARGS__)
 
 /**
@@ -36,7 +36,7 @@ typedef struct config *config_ptr;
  * bytes of payload.
  */
 // void nfv_socket_init(nfv_socket_ptr self, size_t packet_size, size_t burst_size);
-NFV_METHOD_DECLARATION(void, init, config_ptr conf);
+extern NFV_METHOD_DECLARATION(void, init, config_ptr conf);
 
 /**
  * Requests `burst_size` data buffers associated with the provided socket to be
@@ -47,7 +47,7 @@ NFV_METHOD_DECLARATION(void, init, config_ptr conf);
  */
 // void nfv_request_out_buffers(nfv_socket_ptr self, buffer_t *buffers, size_t
 // packet_size, size_t burst_size);
-NFV_METHOD_DECLARATION(void, request_out_buffers, buffer_t *buffers, size_t packet_size, size_t burst_size);
+static inline NFV_METHOD_DECLARATION(void, request_out_buffers, buffer_t *buffers, size_t packet_size, size_t burst_size);
 
 /**
  * Sends a burst of data.
@@ -57,7 +57,7 @@ NFV_METHOD_DECLARATION(void, request_out_buffers, buffer_t *buffers, size_t pack
  * must be acquired once again.
  */
 //void nfv_send(nfv_socket_ptr self);
-NFV_METHOD_DECLARATION(ssize_t, send);
+static inline NFV_METHOD_DECLARATION(ssize_t, send);
 
 /**
  * Checks (non-blocking-ly) is there is new data to be received and if so it
@@ -69,7 +69,7 @@ NFV_METHOD_DECLARATION(ssize_t, send);
  */
 // void nfv_recv(nfv_socket_ptr self, byte_t **buffers, size_t packet_size, size_t
 // burst_size);
-NFV_METHOD_DECLARATION(ssize_t, recv, buffer_t *buffers, size_t packet_size, size_t burst_size);
+static inline NFV_METHOD_DECLARATION(ssize_t, recv, buffer_t *buffers, size_t packet_size, size_t burst_size);
 
 /**
  * Sends back a burst of data after a `nfv_recv`.
@@ -79,14 +79,14 @@ NFV_METHOD_DECLARATION(ssize_t, recv, buffer_t *buffers, size_t packet_size, siz
  * must be acquired once again.
  */
 //void nfv_send_back(nfv_socket_ptr self);
-NFV_METHOD_DECLARATION(ssize_t, send_back);
+static inline NFV_METHOD_DECLARATION(ssize_t, send_back);
 
 /**
  * Frees all the buffers that are currently borrowed by the application on the
  * given socket.
  */
 //void nfv_free_buffers(nfv_socket_ptr self);
-NFV_METHOD_DECLARATION(void, free_buffers);
+static inline NFV_METHOD_DECLARATION(void, free_buffers);
 
 /* ---------------------------- CLASS DEFINITION ---------------------------- */
 
@@ -119,5 +119,36 @@ struct nfv_socket
 
     buffer_t *payloads;
 };
+
+/* ----------------------- CLASS FUNCTION DEFINITIONS ----------------------- */
+
+static inline NFV_METHOD_SIGNATURE(void, request_out_buffers, buffer_t *buffers, size_t packet_size, size_t burst_size)
+{
+    NFV_CALL(self, request_out_buffers, buffers, packet_size, burst_size);
+}
+
+static inline NFV_METHOD_SIGNATURE(ssize_t, send)
+{
+    return NFV_CALL(self, send);
+}
+
+static inline NFV_METHOD_SIGNATURE(ssize_t, recv, buffer_t *buffers, size_t packet_size, size_t burst_size)
+{
+    return NFV_CALL(self, recv, buffers, packet_size, burst_size);
+}
+
+static inline NFV_METHOD_SIGNATURE(ssize_t, send_back)
+{
+    return NFV_CALL(self, send_back);
+}
+
+static inline NFV_METHOD_SIGNATURE(void, free_buffers)
+{
+    NFV_CALL(self, free_buffers);
+}
+
+/* ----------------------- CLASS FACTORY DECLARATIONS ----------------------- */
+
+extern nfv_socket_ptr nfv_socket_factory_get(config_ptr conf);
 
 #endif /* NFV_SOCKET_H */
