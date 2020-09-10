@@ -1,7 +1,7 @@
 # variables that can be overwritten from outside
 DIR_ROOTFS	?= ~/testbed/install/rootfs
 RTE_TARGET	?= x86_64-native-linuxapp-gcc
-RTE_SDK		?= $(HOME)/testbed/install/dpdk-20.02/share/dpdk
+RTE_SDK		?= $(HOME)/Documents/PhD/Projects/testbed/install/dpdk-20.02/share/dpdk
 
 # variables needed to include header files
 THIS_FILE		:= $(lastword $(MAKEFILE_LIST))
