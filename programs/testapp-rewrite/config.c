@@ -19,6 +19,7 @@
 
 #include "config.h"
 #include "constants.h"
+#include "dpdk.h"
 
 /* ------------------------------- Constants -------------------------------- */
 
@@ -610,8 +611,7 @@ int config_initialize_socket(struct config *conf, int argc, char *argv[]) {
                                0); // TODO: initialize data structures too
     case NFV_SOCK_DPDK:
         // TODO: initialize DPDK stuff here
-        // return dpdk_init(argc, argv, &conf);
-        return 0;
+        return dpdk_init(argc, argv, conf);
     default:
         break;
     }

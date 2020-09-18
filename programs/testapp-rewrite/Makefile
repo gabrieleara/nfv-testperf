@@ -15,11 +15,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 APP          = testapp
 
 # Source files
-# SRCS-y      += main.c common.c stats.c timestamp.c dpdk.c
-# SRCS-y      += server.c client.c clientst.c send.c recv.c
-# SRCS-y      += dpdk-server.c dpdk-client.c dpdk-clientst.c dpdk-send.c dpdk-recv.c
-
-SRCS-y      += main.c config.c commands.c timestamp.c loops.c stats.c nfv_socket.c nfv_socket_simple.c nfv_socket_dpdk.c
+SRCS-y      += main.c config.c commands.c timestamp.c loops.c stats.c nfv_socket.c nfv_socket_simple.c nfv_socket_dpdk.c dpdk.c
 
 # Extra compilation and preprocessing flags
 CFLAGS      += -iquote $(THIS_DIR)/inc
