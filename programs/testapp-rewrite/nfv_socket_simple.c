@@ -261,5 +261,5 @@ NFV_SIMPLE_SIGNATURE(ssize_t, send_back, size_t howmany) {
         }
     }
 
-    return NFV_CALL(self, send, howmany);
+    return nfv_socket_simple_send(self, howmany);
 }

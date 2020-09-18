@@ -27,7 +27,7 @@ CFLAGS      += -iquote $(THIS_DIR)/inc
 CFLAGS      += -Wall -Wextra -march=native
 CFLAGS      += -O3
 # NOTICE: the next one is only for DEBUG PURPOSES!
-CFLAGS      += -O0 -ggdb
+# CFLAGS      += -O0 -ggdb
 # CFLAGS      += $(WERROR_FLAGS)
 
 LDFLAGS     += -lstdc++

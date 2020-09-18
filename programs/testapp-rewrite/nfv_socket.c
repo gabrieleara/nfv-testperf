@@ -25,27 +25,24 @@ nfv_socket_ptr nfv_socket_factory_get(config_ptr conf) {
     struct nfv_socket_simple *socket_simple;
     // struct nfv_socket_dpdk *socket_dpdk;
 
-    // Initialize methods of base class
-    // TODO: do I need methods for base class?
-    base.request_out_buffers = nfv_socket_request_out_buffers;
-    base.send = nfv_socket_send;
-    base.recv = nfv_socket_recv;
-    base.send_back = nfv_socket_send_back;
-
     // Initialize base attributes
     nfv_socket_init(&base, conf);
 
     switch (conf->sock_type) {
     case NFV_SOCK_DGRAM:
     case NFV_SOCK_RAW:
-            // case NFV_SOCK_SIMPLE:
+        // case NFV_SOCK_SIMPLE:
         socket_simple = malloc(sizeof(struct nfv_socket_simple));
 
+#ifdef USE_FPTRS
         // Update methods and set base class pointer
         base.request_out_buffers = nfv_socket_simple_request_out_buffers;
         base.send = nfv_socket_simple_send;
         base.recv = nfv_socket_simple_recv;
         base.send_back = nfv_socket_simple_send_back;
+#else
+        base.classcode = NFV_SOCK_SIMPLE;
+#endif
         socket_simple->super = base;
 
         nfv_socket_simple_init((nfv_socket_ptr)socket_simple, conf);
@@ -54,14 +51,18 @@ nfv_socket_ptr nfv_socket_factory_get(config_ptr conf) {
     case NFV_SOCK_DPDK:
         // socket_dpdk = malloc(sizeof(struct nfv_socket_dpdk));
 
-        // socket_dpdk->super = base;
-
+#ifdef USE_FPTRS
         // // Initialize methods of subclass
         // socket_dpdk->super.request_out_buffers =
         // nfv_socket_dpdk_request_out_buffers; socket_dpdk->super.send =
         // nfv_socket_dpdk_send; socket_dpdk->super.recv = nfv_socket_dpdk_recv;
         // socket_dpdk->super.send_back = nfv_socket_dpdk_send_back;
         // socket_dpdk->super.free_buffers = nfv_socket_dpdk_free_buffers;
+#else
+        // base.classcode = NFV_SOCK_DPDK;
+#endif
+
+        // socket_dpdk->super = base;
 
         // nfv_socket_simple_init((nfv_socket_ptr) socket_dpdk, conf);
 
@@ -71,3 +72,30 @@ nfv_socket_ptr nfv_socket_factory_get(config_ptr conf) {
         return NULL;
     }
 }
+
+// TODO: change to ifndef
+#ifndef USE_FPTRS
+
+#define NFV_CALL_RETURN(self, method, ...)                                     \
+    if ((self->classcode & NFV_SOCK_SIMPLE) != 0)                              \
+        return nfv_socket_simple_##method(self, ##__VA_ARGS__);                \
+    else if ((self->classcode & NFV_SOCK_DPDK) != 0)                           \
+        return 0;                                                              \
+    return 0;
+// return nfv_socket_dpdk_request_out_buffers(self, buffers, howmany);
+
+NFV_SIGNATURE(size_t, request_out_buffers, buffer_t buffers[], size_t howmany) {
+    NFV_CALL_RETURN(self, request_out_buffers, buffers, howmany);
+}
+
+NFV_SIGNATURE(ssize_t, send, size_t howmany) {
+    NFV_CALL_RETURN(self, send, howmany);
+}
+
+NFV_SIGNATURE(ssize_t, recv, buffer_t buffers[], size_t howmany) {
+    NFV_CALL_RETURN(self, recv, buffers, howmany);
+}
+NFV_SIGNATURE(ssize_t, send_back, size_t howmany) {
+    NFV_CALL_RETURN(self, send_back, howmany);
+}
+#endif
