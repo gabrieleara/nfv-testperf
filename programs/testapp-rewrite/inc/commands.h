@@ -1,6 +1,10 @@
 #ifndef MAIN_H
 #define MAIN_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern int server_body(int argc, char *argv[]);
 extern int client_body(int argc, char *argv[]);
 extern int clientst_body(int argc, char *argv[]);
@@ -49,5 +53,9 @@ static const main_body_t commands_f[] = {
 };
 
 static const int num_commands = sizeof(commands_f) / sizeof(main_body_t);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
 #endif

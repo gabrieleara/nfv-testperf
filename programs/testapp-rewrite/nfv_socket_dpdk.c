@@ -35,7 +35,7 @@ NFV_SOCKET_DPDK_SIGNATURE(void, init, config_ptr conf)
 
 // FIXME: if I give less than burst_size here, I should remember it because
 // otherwise the send would send too many packets
-NFV_SOCKET_DPDK_SIGNATURE(void, request_out_buffers, buffer_t *buffers, size_t size, size_t howmany)
+NFV_SOCKET_DPDK_SIGNATURE(void, request_out_buffers, byte_ptr_t *buffers, size_t size, size_t howmany)
 {
     struct nfv_socket_dpdk *sself = (struct nfv_socket_dpdk *)(self);
 
@@ -90,7 +90,7 @@ NFV_SOCKET_DPDK_SIGNATURE(ssize_t, send)
 // BUG: for the server there is no way to check who sent a message and construct
 // the appropriate headers as of now. ALSO BUG: for raw sockets should check
 // that the destination address is this address
-NFV_SOCKET_DPDK_SIGNATURE(ssize_t, recv, buffer_t *buffers, size_t size, size_t howmany)
+NFV_SOCKET_DPDK_SIGNATURE(ssize_t, recv, byte_ptr_t *buffers, size_t size, size_t howmany)
 {
     size_t pkts_actually_rx;
     size_t pkts_rx;

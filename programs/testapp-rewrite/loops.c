@@ -4,15 +4,17 @@
 
 /* -------------------------------- INCLUDES -------------------------------- */
 
-#include <stdbool.h>
 #include <signal.h>
+#include <stdbool.h>
 
-#include "timestamp.h"
-#include "nfv_socket.h"
 #include "config.h"
 #include "loops.h"
-#include "stats.h"
+#include "nfv_socket.h"
 #include "pkt_util.h"
+#include "stats.h"
+#include "timestamp.h"
+
+typedef struct nfv_socket *nfv_socket_ptr;
 
 /* -------------------------------- DEFINES --------------------------------- */
 
@@ -20,8 +22,8 @@
 #define UNUSED(x) ((void)x)
 
 /* Used to write forever loops */
-#define ever \
-    ;        \
+#define ever                                                                   \
+    ;                                                                          \
     ;
 
 /* -------------------------------- GLOBALS --------------------------------- */
@@ -32,14 +34,11 @@ struct stats *stats_ptr = NULL;
 
 /* --------------------------- LOOP EXIT FUNCTION --------------------------- */
 
-void handle_sigint(int sig)
-{
+void handle_sigint(int sig) {
     printf("\nCaught signal %s!\n", strsignal(sig));
 
-    if (sig == SIGINT)
-    {
-        if (stats_ptr != NULL)
-        {
+    if (sig == SIGINT) {
+        if (stats_ptr != NULL) {
             // Print average stats
             printf("-------------------------------------\n");
             printf("FINAL STATS\n");
@@ -56,12 +55,10 @@ void handle_sigint(int sig)
 /**
  * Infinite loop that updates the global tsc timer.
  */
-void tsc_loop(void *arg)
-{
+void tsc_loop(void *arg) {
     UNUSED(arg);
 
-    for (ever)
-    {
+    for (ever) {
         tsc_get_update();
     }
 
@@ -74,8 +71,7 @@ void tsc_loop(void *arg)
  *
  * TODO: stats (optional, the client send body does not produce any!)
  */
-void send_loop(struct config *conf)
-{
+void send_loop(struct config *conf) {
     nfv_socket_ptr socket = nfv_socket_factory_get(conf);
 
     /* ----------------------------- Constants ------------------------------ */
@@ -111,19 +107,17 @@ void send_loop(struct config *conf)
 
     int num_sent;
 
-    for (ever)
-    {
-        tsc_cur = tsc_get_update(); // FIXME: What about tsc_get_update for sender application?
+    for (ever) {
+        tsc_cur = tsc_get_update(); // FIXME: What about tsc_get_update for
+                                    // sender application?
 
         // If more than a second elapsed
-        if (tsc_cur - tsc_prev > tsc_out)
-        {
+        if (tsc_cur - tsc_prev > tsc_out) {
             // Save stats
             stats_save(&stats, (union stats_data *)&stats_period);
 
             // If not silent, print them
-            if (!conf->silent)
-            {
+            if (!conf->silent) {
                 stats_print(STATS_TX, (union stats_data *)&stats_period);
             }
 
@@ -137,26 +131,25 @@ void send_loop(struct config *conf)
 
         /*  If it is already time for the next burst (or in general tsc_next is
             less than tsc_cur), send the next burst */
-        if (tsc_cur > tsc_next)
-        {
+        if (tsc_cur > tsc_next) {
             tsc_next += tsc_incr;
 
             // Request buffers where to write our packets from the library The
             // library will fill header information if necessary (example.
             // SOCK_RAW or DPDK)
-            nfv_socket_request_out_buffers(socket, buffers, conf->payload_size, conf->bst_size);
+            nfv_socket_request_out_buffers(socket, buffers, conf->bst_size);
 
             // Put payload data in each packet
-            for (size_t i = 0; i < conf->bst_size; ++i)
-            {
+            for (size_t i = 0; i < conf->bst_size; ++i) {
                 // The first element will have the current value of the tsc,
                 // then a dummy payload will be inserted to fill the packet The
                 // tsc value is taken after producing the dummy data
 
                 // If data should be produced, fill each packet
-                if (conf->touch_data)
-                {
-                    produce_data_offset(buffers[i], conf->payload_size - sizeof(tsc_cur), sizeof(tsc_cur));
+                if (conf->touch_data) {
+                    produce_data_offset(buffers[i],
+                                        conf->payload_size - sizeof(tsc_cur),
+                                        sizeof(tsc_cur));
                 }
 
                 tsc_cur = tsc_get_update();
@@ -165,11 +158,10 @@ void send_loop(struct config *conf)
 
             // Use one single call to send data (the library will then convert
             // to the appropriate single or multiple calls)
-            num_sent = nfv_socket_send(socket);
+            num_sent = nfv_socket_send(socket, conf->bst_size);
 
             // Errors are considered all dropped packets
-            if (num_sent < 0)
-            {
+            if (num_sent < 0) {
                 num_sent = 0;
             }
 
@@ -184,8 +176,7 @@ void send_loop(struct config *conf)
 /**
  * Infinite loop that receives packets grouping them in bursts.
  */
-void recv_loop(struct config *conf)
-{
+void recv_loop(struct config *conf) {
     // TODO:
     nfv_socket_ptr socket = nfv_socket_factory_get(conf);
 
@@ -219,19 +210,16 @@ void recv_loop(struct config *conf)
 
     tsc_cur = tsc_prev = tsc_get_update();
 
-    for (ever)
-    {
+    for (ever) {
         tsc_cur = tsc_get_update();
 
         // If more than a second elapsed, print stats
-        if (tsc_cur - tsc_prev > tsc_out)
-        {
+        if (tsc_cur - tsc_prev > tsc_out) {
             // Save stats
             stats_save(&stats, (union stats_data *)&stats_period);
 
             // If not conf->silent, print them
-            if (!conf->silent)
-            {
+            if (!conf->silent) {
                 stats_print(STATS_RX, (union stats_data *)&stats_period);
             }
 
@@ -242,25 +230,22 @@ void recv_loop(struct config *conf)
             tsc_prev = tsc_cur;
         }
 
-        num_recv = nfv_socket_recv(socket, buffers, conf->payload_size, conf->bst_size);
+        num_recv = nfv_socket_recv(socket, buffers, conf->bst_size);
 
         // If data should be consumed, do that
-        if (conf->touch_data)
-        {
+        if (conf->touch_data) {
             num_ok = 0;
-            for (int i = 0; i < num_recv; ++i)
-            {
-                if (consume_data_offset(buffers[i], conf->payload_size - sizeof(tsc_t), sizeof(tsc_t)))
+            for (int i = 0; i < num_recv; ++i) {
+                if (consume_data_offset(buffers[i],
+                                        conf->payload_size - sizeof(tsc_t),
+                                        sizeof(tsc_t)))
                     ++num_ok;
             }
 
             num_recv = num_ok;
         }
 
-        nfv_socket_free_buffers(socket);
-
-        if (num_recv < 0)
-        {
+        if (num_recv < 0) {
             num_recv = 0;
         }
 
@@ -270,8 +255,7 @@ void recv_loop(struct config *conf)
     __builtin_unreachable();
 }
 
-void pong_loop(struct config *conf)
-{
+void pong_loop(struct config *conf) {
     nfv_socket_ptr socket = nfv_socket_factory_get(conf);
 
     /* ----------------------------- Constants ------------------------------ */
@@ -302,16 +286,13 @@ void pong_loop(struct config *conf)
     int num_recv;
     tsc_cur = tsc_prev = tsc_get_last();
 
-    for (ever)
-    {
+    for (ever) {
         tsc_cur = tsc_get_last();
 
         // If more than a second elapsed
-        if (tsc_cur - tsc_prev > tsc_out)
-        {
+        if (tsc_cur - tsc_prev > tsc_out) {
             // If there is some stat to actually save
-            if (stats_period.num)
-            {
+            if (stats_period.num) {
                 // Calculate the actual average (until now it is a total,
                 // despite the name)
                 stats_period.avg = stats_period.avg / stats_period.num;
@@ -320,8 +301,7 @@ void pong_loop(struct config *conf)
                 stats_save(&stats, (union stats_data *)&stats_period);
 
                 // If not conf->silent, print them
-                if (!conf->silent)
-                {
+                if (!conf->silent) {
                     stats_print(STATS_DELAY, (union stats_data *)&stats_period);
                 }
             }
@@ -334,14 +314,14 @@ void pong_loop(struct config *conf)
             tsc_prev = tsc_cur;
         }
 
-        num_recv = nfv_socket_recv(socket, buffers, conf->payload_size, conf->bst_size);
+        num_recv = nfv_socket_recv(socket, buffers, conf->bst_size);
 
-        for (int i = 0; i < num_recv; ++i)
-        {
+        for (int i = 0; i < num_recv; ++i) {
             tsc_pkt = get_i64_offset(buffers[i], 0);
-            if (conf->touch_data)
-            {
-                consume_data_offset(buffers[i], conf->payload_size - sizeof(tsc_t), sizeof(tsc_t));
+            if (conf->touch_data) {
+                consume_data_offset(buffers[i],
+                                    conf->payload_size - sizeof(tsc_t),
+                                    sizeof(tsc_t));
             }
 
             tsc_cur = tsc_get_last();
@@ -349,29 +329,25 @@ void pong_loop(struct config *conf)
             // NOTICE: With this, packets with more than 0.1s delay are
             // considered dropped
             tsc_diff = tsc_cur - tsc_pkt;
-            if (tsc_diff < tsc_hz / 10)
-            {
+            if (tsc_diff < tsc_hz / 10) {
                 // Add calculated delay to the avg attribute (which is actually
                 // the sum of all delays, the actual average is calculated only
                 // once per second).
                 stats_period.avg += tsc_diff;
                 ++stats_period.num;
-            }
-            else if (!conf->silent)
-            {
-                printf("ERR: Received message with very big time difference: TSC DIFF %lu (TSC_HZ %lu)\n", tsc_diff, tsc_hz);
+            } else if (!conf->silent) {
+                printf("ERR: Received message with very big time difference: "
+                       "TSC DIFF %lu (TSC_HZ %lu)\n",
+                       tsc_diff, tsc_hz);
             }
         }
-
-        nfv_socket_free_buffers(socket);
     }
 
     __builtin_unreachable();
 }
 
-void server_loop(struct config *conf)
-{
-    //TODO:
+void server_loop(struct config *conf) {
+    // TODO:
     UNUSED(conf);
     __builtin_unreachable();
 }

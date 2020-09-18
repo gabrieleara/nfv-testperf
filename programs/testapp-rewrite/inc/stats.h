@@ -13,6 +13,10 @@
 
 /* ******************** STRUCTS ******************** */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct stats_data_tx
 {
     uint64_t tx;
@@ -84,5 +88,9 @@ extern void stats_print_all(struct stats *s);
 /* ******************** CONSTANTS ******************** */
 
 extern const struct stats STATS_INIT;
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
 #endif // STATS_H

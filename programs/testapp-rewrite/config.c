@@ -6,27 +6,27 @@
 
 #include <stdbool.h>
 
-#include <unistd.h>
 #include <stdio.h>
+#include <unistd.h>
 
-#include <linux/if_ether.h>
 #include <fcntl.h>
+#include <linux/if_ether.h>
 
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
 #include <net/if.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 
-#include "constants.h"
 #include "config.h"
+#include "constants.h"
 
 // #include "dpdk.h"
 
 /* ------------------------------- Constants -------------------------------- */
 
-#define NO_ADDR_PORT            \
-    {                           \
-        .ip = {0}, .mac = { 0 } \
+#define NO_ADDR_PORT                                                           \
+    {                                                                          \
+        .ip = {0}, .mac = { 0 }                                                \
     }
 
 static const struct config CONFIG_STRUCT_INITIALIZER = {
@@ -47,20 +47,24 @@ static const struct config CONFIG_STRUCT_INITIALIZER = {
     .sock_type = NFV_SOCK_NONE,
     .sock_fd = -1,
 
-    .dpdk = {
-        .portid = 0,
-        .direction = DIRECTION_TXRX,
-        .mbufs = NULL,
-    },
+    .dpdk =
+        {
+            .portid = 0,
+            .direction = DIRECTION_TXRX,
+            .mbufs = NULL,
+        },
 };
 
 const char usage_format_string[] =
     "USAGE\n"
-    "       %s <program-options-unordered-list> <addresses-ordered-list> -- <dpdk-parameters>\n"
+    "       %s <program-options-unordered-list> <addresses-ordered-list> -- "
+    "<dpdk-parameters>\n"
     "\n"
     "Where:\n"
-    " - <program-options-unordered-list> is a list of non-ordered parameters (see PARAMETERS section);\n"
-    " - <adresses-ordered-list> is a list of IP and MAC addresses used by the program\n"
+    " - <program-options-unordered-list> is a list of non-ordered parameters "
+    "(see PARAMETERS section);\n"
+    " - <adresses-ordered-list> is a list of IP and MAC addresses used by the "
+    "program\n"
     "       (see ADDRESSES section);\n"
     " - <dpdk-parameters> is a list of parameters for EAL DPDK environment\n"
     "       (see online - used only by programs starting with 'dpdk-').\n"
@@ -69,32 +73,47 @@ const char usage_format_string[] =
     "\n"
     "    -r <rate=1000000>      The sending/receiving rate in pps.\n"
     "    -p <packet_size=64>    The size of each frame in bytes.\n"
-    "    -b <burst_size=32>     The size of each packet burst in number of packets.\n"
+    "    -b <burst_size=32>     The size of each packet burst in number of "
+    "packets.\n"
     "\n"
-    "    -c                     Generate actual data/Calculate a checksum on each received payload.\n"
-    "                           This ensures that each byte in a message payload is actually touched.\n"
+    "    -c                     Generate actual data/Calculate a checksum on "
+    "each received payload.\n"
+    "                           This ensures that each byte in a message "
+    "payload is actually touched.\n"
     "\n"
-    "    -R <interf_name>       Use RAW sockets instead of UDP ones (default are UDP sockets).\n"
-    "                           The argument is the name of the interface to use.\n"
-    "                           Valid only for sockets-based programs, not DPDK ones.\n"
+    "    -R <interf_name>       Use RAW sockets instead of UDP ones (default "
+    "are UDP sockets).\n"
+    "                           The argument is the name of the interface to "
+    "use.\n"
+    "                           Valid only for sockets-based programs, not "
+    "DPDK ones.\n"
     "\n"
-    "    -B                     Use blocking sockets instead of nonblocking ones.\n"
-    "                           Valid only for sockets-based programs, not DPDK ones.\n"
+    "    -B                     Use blocking sockets instead of nonblocking "
+    "ones.\n"
+    "                           Valid only for sockets-based programs, not "
+    "DPDK ones.\n"
     "\n"
-    "    -m                     Use SENDMMSG/RECVMMSG API to exchange packets.\n"
-    "                           Valid only for sockets-based programs, not DPDK ones.\n"
+    "    -m                     Use SENDMMSG/RECVMMSG API to exchange "
+    "packets.\n"
+    "                           Valid only for sockets-based programs, not "
+    "DPDK ones.\n"
     "\n"
-    "    -s                     Run in silent mode. Prints no stats until the termination SIGINT is received.\n"
+    "    -s                     Run in silent mode. Prints no stats until the "
+    "termination SIGINT is received.\n"
     "\n"
     "\n"
     "ADDRESSES\n"
     "\n"
-    "       The application expects some addresses to be given as argument in a specific order.\n"
+    "       The application expects some addresses to be given as argument in "
+    "a specific order.\n"
     "       The following is the list of each address expected.\n"
-    "       Default values will be used if not all addresses are provided and not all parameters are always used.\n"
+    "       Default values will be used if not all addresses are provided and "
+    "not all parameters are always used.\n"
     "\n"
-    "       Since the program will communicate with another application, we will refer as this\n"
-    "       program as the LOCAL application and use the REMOTE term to indicate the other one.\n"
+    "       Since the program will communicate with another application, we "
+    "will refer as this\n"
+    "       program as the LOCAL application and use the REMOTE term to "
+    "indicate the other one.\n"
     "\n"
     "       <LOCAL_IP> <LOCAL_MAC> <REMOTE_IP> <REMOTE_MAC> \n"
     "\n";
@@ -106,20 +125,14 @@ const char usage_format_string[] =
  *
  * \return true on success.
  * */
-static inline bool check_doubledash(char *s)
-{
-    return strcmp(s, "--") == 0;
-}
+static inline bool check_doubledash(char *s) { return strcmp(s, "--") == 0; }
 
 /**
  * Check whether the first character is equal to '-'.
  *
  * \return true on success.
  * */
-static inline bool check_dash(char *s)
-{
-    return s[0] == '-';
-}
+static inline bool check_dash(char *s) { return s[0] == '-'; }
 
 /**
  * Parse option arguments.
@@ -144,19 +157,16 @@ static inline bool check_dash(char *s)
  * \return the index of the last non-processed argument (either a "--" or a
  * non-option argument).
  * */
-static inline int options_parse(
-    int argc,
-    char *argv[],
-    struct config *conf,
-    int argind)
-{
+static inline int options_parse(int argc, char *argv[], struct config *conf,
+                                int argind) {
     int opt;
     optind = argind;
 
-    while ((opt = getopt(argc, argv, "+r:p:b:R:cmsB")) != -1)
-    {
-        switch (opt)
-        {
+    const size_t buflen = sizeof(conf->local_interf);
+    assert(buflen > 0);
+
+    while ((opt = getopt(argc, argv, "+r:p:b:R:cmsB")) != -1) {
+        switch (opt) {
         case 'r':
             conf->rate = atoi(optarg);
             break;
@@ -174,8 +184,6 @@ static inline int options_parse(
 
             conf->sock_type = NFV_SOCK_RAW;
 
-            const size_t buflen = sizeof(conf->local_interf);
-            assert(buflen > 0);
             strncpy(conf->local_interf, optarg, buflen - 1);
             conf->local_interf[buflen - 1] = '\0';
 
@@ -207,8 +215,7 @@ static inline int options_parse(
 /**
  * Set the port number of the given address.
  * */
-static inline void addr_port_number_set(struct sockaddr_in *addr, int port)
-{
+static inline void addr_port_number_set(struct sockaddr_in *addr, int port) {
     addr->sin_port = htons(port);
 }
 
@@ -217,8 +224,7 @@ static inline void addr_port_number_set(struct sockaddr_in *addr, int port)
  *
  * \return the requested port number.
  * */
-static inline int addr_port_number_get(const struct sockaddr_in *addr)
-{
+static inline int addr_port_number_get(const struct sockaddr_in *addr) {
     return ntohs(addr->sin_port);
 }
 
@@ -227,14 +233,12 @@ static inline int addr_port_number_get(const struct sockaddr_in *addr)
  *
  * \return 0 on success, an error code otherwise.
  * */
-static inline int addr_ip_set(struct sockaddr_in *addr, const char *str)
-{
+static inline int addr_ip_set(struct sockaddr_in *addr, const char *str) {
     int res;
 
     addr->sin_family = AF_INET;
     res = inet_aton(str, &addr->sin_addr);
-    if (res == 0)
-    {
+    if (res == 0) {
         return -1;
     }
 
@@ -248,8 +252,7 @@ static inline int addr_ip_set(struct sockaddr_in *addr, const char *str)
  *
  * \return 0 on success, an error code otherwise.
  * */
-static inline int addr_ip_get(char *str, const struct sockaddr_in *addr)
-{
+static inline int addr_ip_get(char *str, const struct sockaddr_in *addr) {
     // Assumes sin_family = AF_INET
     if (inet_ntop(AF_INET, &(addr->sin_addr), str, INET_ADDRSTRLEN) == str)
         return 0;
@@ -261,26 +264,22 @@ static inline int addr_ip_get(char *str, const struct sockaddr_in *addr)
  *
  * \return 0 on success, -1 otherwise.
  * */
-static inline int addr_mac_set(struct sockaddr_ll *addr, const char *str, const char *ifname)
-{
+static inline int addr_mac_set(struct sockaddr_ll *addr, const char *str,
+                               const char *ifname) {
     memset(addr, 0, sizeof(struct sockaddr_ll));
     addr->sll_family = AF_PACKET;
     addr->sll_protocol = htons(ETH_P_ALL);
     addr->sll_ifindex = (ifname == NULL) ? 0 : if_nametoindex(ifname);
-    addr->sll_halen = sizeof(addr->sll_addr); // TODO: check if it's right, otherwise just put 6 here
+    addr->sll_halen = sizeof(
+        addr->sll_addr); // TODO: check if it's right, otherwise just put 6 here
 
     int res;
 
-    res = sscanf(str, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
-                 addr->sll_addr + 0,
-                 addr->sll_addr + 1,
-                 addr->sll_addr + 2,
-                 addr->sll_addr + 3,
-                 addr->sll_addr + 4,
-                 addr->sll_addr + 5);
+    res = sscanf(str, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", addr->sll_addr + 0,
+                 addr->sll_addr + 1, addr->sll_addr + 2, addr->sll_addr + 3,
+                 addr->sll_addr + 4, addr->sll_addr + 5);
 
-    if (res != 6)
-    {
+    if (res != 6) {
         memset(addr, 0, 6);
         return -1;
     }
@@ -296,15 +295,10 @@ static inline int addr_mac_set(struct sockaddr_ll *addr, const char *str, const 
  *
  * \return 0 on success, an error code otherwise.
  * */
-static inline int addr_mac_get(char *str, const struct sockaddr_ll *addr)
-{
-    sprintf(str, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
-            addr->sll_addr[0],
-            addr->sll_addr[1],
-            addr->sll_addr[2],
-            addr->sll_addr[3],
-            addr->sll_addr[4],
-            addr->sll_addr[5]);
+static inline int addr_mac_get(char *str, const struct sockaddr_ll *addr) {
+    sprintf(str, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", addr->sll_addr[0],
+            addr->sll_addr[1], addr->sll_addr[2], addr->sll_addr[3],
+            addr->sll_addr[4], addr->sll_addr[5]);
 
     return 0;
 }
@@ -331,11 +325,8 @@ static inline int addr_mac_get(char *str, const struct sockaddr_ll *addr)
  *
  * \return the index of the last non-processed argument.
  * */
-static inline int args_parse(
-    int argc, char *argv[],
-    struct config *conf,
-    int argind)
-{
+static inline int args_parse(int argc, char *argv[], struct config *conf,
+                             int argind) {
     static int parameter_index = 0;
     int res;
     // union {
@@ -344,16 +335,15 @@ static inline int args_parse(
     // } addr;
 
     /* If first argument is "-<something>", return immediately */
-    while (argind < argc && !check_dash(argv[argind]))
-    {
+    while (argind < argc && !check_dash(argv[argind])) {
         /* Order is: local_ip, local_mac, remote_ip, remote_mac */
-        switch (parameter_index)
-        {
+        switch (parameter_index) {
         case 0:
             res = addr_ip_set(&conf->local.ip, argv[argind]);
-            if (res != 0)
-            {
-                fprintf(stderr, "Failed to parse local IP address (argv[%d]=%s)\n", argind, argv[argind]);
+            if (res != 0) {
+                fprintf(stderr,
+                        "Failed to parse local IP address (argv[%d]=%s)\n",
+                        argind, argv[argind]);
                 exit(EXIT_FAILURE);
             }
             break;
@@ -361,26 +351,29 @@ static inline int args_parse(
             // The interface is not set here, but it is binded during raw socket
             // initialization below (if raw sockets are used)
             res = addr_mac_set(&conf->local.mac, argv[argind], NULL);
-            if (res != 0)
-            {
-                fprintf(stderr, "Failed to parse local MAC address (argv[%d]=%s)\n", argind, argv[argind]);
+            if (res != 0) {
+                fprintf(stderr,
+                        "Failed to parse local MAC address (argv[%d]=%s)\n",
+                        argind, argv[argind]);
                 exit(EXIT_FAILURE);
             }
             break;
         case 2:
             res = addr_ip_set(&conf->remote.ip, argv[argind]);
-            if (res != 0)
-            {
-                fprintf(stderr, "Failed to parse remote IP address (argv[%d]=%s)\n", argind, argv[argind]);
+            if (res != 0) {
+                fprintf(stderr,
+                        "Failed to parse remote IP address (argv[%d]=%s)\n",
+                        argind, argv[argind]);
                 exit(EXIT_FAILURE);
             }
             break;
         case 3:
             // For remote MAC addresses, no interface can be specified of course
             res = addr_mac_set(&conf->remote.mac, argv[argind], NULL);
-            if (res != 0)
-            {
-                fprintf(stderr, "Failed to parse remote MAC address (argv[%d]=%s)\n", argind, argv[argind]);
+            if (res != 0) {
+                fprintf(stderr,
+                        "Failed to parse remote MAC address (argv[%d]=%s)\n",
+                        argind, argv[argind]);
                 exit(EXIT_FAILURE);
             }
             break;
@@ -411,41 +404,33 @@ static inline int args_parse(
  *
  * \return 0 on success, non-zero otherwise.
  * */
-static inline int sock_create_dgram(
-    struct config *conf,
-    uint32_t flags)
-{
+static inline int sock_create_dgram(struct config *conf, uint32_t flags) {
     int res;
 
     res = socket(AF_INET, SOCK_DGRAM, 0);
-    if (res < 0)
-    {
+    if (res < 0) {
         perror("Could not create socket");
         return res;
     }
 
     conf->sock_fd = res;
 
-    res = bind(conf->sock_fd, (const struct sockaddr *)&conf->local.ip, sizeof(conf->local.ip));
-    if (res < 0)
-    {
+    res = bind(conf->sock_fd, (const struct sockaddr *)&conf->local.ip,
+               sizeof(conf->local.ip));
+    if (res < 0) {
         perror("Could not bind to local ip/port");
         close(conf->sock_fd);
         return res;
     }
 
-    // FIXME: For now I assume connected sockets, later I'll remove this
-    // assumption for RAW or SENDMMSG ones
-    // if (toconnect)
-    // {
-    res = connect(conf->sock_fd, (struct sockaddr *)&conf->remote.ip, sizeof(conf->remote.ip));
-    if (res < 0)
-    {
+    // FIXME: Must use connected sockets for outgoing packets!
+    res = connect(conf->sock_fd, (struct sockaddr *)&conf->remote.ip,
+                  sizeof(conf->remote.ip));
+    if (res < 0) {
         perror("Could not connect to remote ip/port");
         close(conf->sock_fd);
         return res;
     }
-    // }
 
     // If the socket should be non blocking, set it so, otherwise remove the
     // flag from the flags
@@ -455,13 +440,11 @@ static inline int sock_create_dgram(
         flags &= ~O_NONBLOCK;
 
     // TODO: check if this should be before or after bind or it does not mind
-    if (flags)
-    {
+    if (flags) {
         int oldflags = fcntl(conf->sock_fd, F_GETFL, 0);
         res = fcntl(conf->sock_fd, F_SETFL, oldflags | flags);
 
-        if (res < 0)
-        {
+        if (res < 0) {
             perror("Could not set file descriptor flags");
             close(conf->sock_fd);
 
@@ -486,11 +469,8 @@ static inline int sock_create_dgram(
  *
  * \return 0 on success, non-zero otherwise.
  * */
-static inline int sock_create_raw(
-    int *sock_fd,
-    const char *ifname,
-    uint32_t flags)
-{
+static inline int sock_create_raw(int *sock_fd, const char *ifname,
+                                  uint32_t flags) {
     int res;
 
     struct sockaddr_ll ll; /* Link-layer socket address descriptor */
@@ -500,8 +480,7 @@ static inline int sock_create_raw(
 
     /* Open a raw socket */
     res = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
-    if (res < 0)
-    {
+    if (res < 0) {
         perror("ERR: socket failed");
         return -1;
     }
@@ -517,21 +496,18 @@ static inline int sock_create_raw(
     ll.sll_ifindex = if_nametoindex(ifname);
 
     res = bind(*sock_fd, (struct sockaddr *)&ll, sizeof(struct sockaddr_ll));
-    if (res < 0)
-    {
+    if (res < 0) {
         perror("ERR: failed to bind with interface");
         close(*sock_fd);
         return -3;
     }
 
     // TODO: check if this should be before or after bind or it does not mind
-    if (flags)
-    {
+    if (flags) {
         int oldflags = fcntl(*sock_fd, F_GETFL, 0);
         res = fcntl(*sock_fd, F_SETFL, oldflags | flags);
 
-        if (res < 0)
-        {
+        if (res < 0) {
             perror("Could not set file descriptor flags");
             close(*sock_fd);
 
@@ -555,8 +531,8 @@ static inline int sock_create_raw(
  * numbers, if provided. Can be NULL.
  *
  * */
-void config_initialize(struct config *conf, const struct config_defaults *defaults)
-{
+void config_initialize(struct config *conf,
+                       const struct config_defaults *defaults) {
     memcpy(conf, &CONFIG_STRUCT_INITIALIZER, sizeof(struct config));
 
     if (!defaults)
@@ -586,18 +562,14 @@ void config_initialize(struct config *conf, const struct config_defaults *defaul
  * this call, either the return value is greater or equal to argc, or it is the
  * index of the first argument equal to "--".
  * */
-int config_parse_arguments(struct config *conf, int argc, char *argv[])
-{
+int config_parse_arguments(struct config *conf, int argc, char *argv[]) {
     int argind = 1;
     char *cmdname = argv[0];
 
-    if (strstr(cmdname, "dpdk-") != NULL)
-    {
+    if (strstr(cmdname, "dpdk-") != NULL) {
         // Will use DPDK
         conf->sock_type = NFV_SOCK_DPDK;
-    }
-    else
-    {
+    } else {
         // Will use regular sockets... if RAW sockets will be used, the option
         // -R will change this parameter to SOCK_RAW
         conf->sock_type = NFV_SOCK_DGRAM;
@@ -608,8 +580,7 @@ int config_parse_arguments(struct config *conf, int argc, char *argv[])
     /* This loop keeps alternating between options and non-option arguments,
      * until either -- is found or no arguments are left.
      *  */
-    while (argind < argc && !check_doubledash(argv[argind]))
-    {
+    while (argind < argc && !check_doubledash(argv[argind])) {
         argind = options_parse(argc, argv, conf, argind);
         argind = args_parse(argc, argv, conf, argind);
     }
@@ -625,20 +596,20 @@ int config_parse_arguments(struct config *conf, int argc, char *argv[])
 }
 
 #define UNUSED(x) ((void)x)
-int config_initialize_socket(struct config *conf, int argc, char *argv[])
-{
+int config_initialize_socket(struct config *conf, int argc, char *argv[]) {
     UNUSED(argc);
     UNUSED(argv);
 
     // TODO: change constants here
-    switch (conf->sock_type)
-    {
+    switch (conf->sock_type) {
     case NFV_SOCK_DGRAM:
         // TODO: additional flags?
-        return sock_create_dgram(conf, 0); // TODO: initialize data structures too
+        return sock_create_dgram(conf,
+                                 0); // TODO: initialize data structures too
     case NFV_SOCK_RAW:
         // TODO: additional flags?
-        return sock_create_raw(&conf->sock_fd, conf->local_interf, 0); // TODO: initialize data structures too
+        return sock_create_raw(&conf->sock_fd, conf->local_interf,
+                               0); // TODO: initialize data structures too
     case NFV_SOCK_DPDK:
         // TODO: initialize DPDK stuff here
         // return dpdk_init(argc, argv, &conf);
@@ -654,8 +625,7 @@ int config_initialize_socket(struct config *conf, int argc, char *argv[])
 /**
  * Print the current configuration to stdout.
  * */
-void config_print(struct config *conf)
-{
+void config_print(struct config *conf) {
     printf("CONFIGURATION\n");
     printf("-------------------------------------\n");
     printf("rate (pps)\t%lu\n", conf->rate);
@@ -663,8 +633,7 @@ void config_print(struct config *conf)
     printf("bst size\t%lu\n", conf->bst_size);
 
     printf("sock type\t");
-    switch (conf->sock_type)
-    {
+    switch (conf->sock_type) {
     case NFV_SOCK_DGRAM:
         printf("udp");
         break;
@@ -711,7 +680,8 @@ void config_print(struct config *conf)
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-// // TODO: MAKE THIS THE SINGLE POINT TO CREATE THE "SOCKET" FOR THE MAIN FUNCTION
+// // TODO: MAKE THIS THE SINGLE POINT TO CREATE THE "SOCKET" FOR THE MAIN
+// FUNCTION
 // /**
 //  * Creates an nfv_socket structure from the given configuration.
 //  * */
@@ -720,7 +690,8 @@ void config_print(struct config *conf)
 //     switch (conf->socktype)
 //     {
 //     case SOCK_DGRAM:
-//         return sock_create_dgram(&conf->sock_fd, &conf->local.ip, 0); // TODO: flags?
+//         return sock_create_dgram(&conf->sock_fd, &conf->local.ip, 0); //
+//         TODO: flags?
 //     case SOCK_RAW:
 //         return sock_create_raw(&conf->sock_fd, conf->local_interf, flags);
 //     }

@@ -6,8 +6,14 @@
 #include "timestamp.h"
 
 #include <rte_ether.h>
-#include <rte_udp.h>
 #include <rte_ip.h>
+#include <rte_udp.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// FIXME: organize things
 
 /* ------------------------ Default Parameter Values ------------------------ */
 
@@ -37,11 +43,14 @@
 
 /* ----------------------- Default IPv4 Packet Values ----------------------- */
 
-#define IP_DEFAULT_TTL 64                              /* Default TTL [from RFC 1340] */
-#define IP_VERSION 0x40                                /* IPv4 */
-                                                       // FIXME: check the actual length of the structure
-#define IP_HEADER_LEN 0x05                             /* Default IP header length == five 32-bits words. */
-#define IP_VERSION_HDRLEN (IP_VERSION | IP_HEADER_LEN) /* Actual field of the IPv4 header */
+#define IP_DEFAULT_TTL 64 /* Default TTL [from RFC 1340] */
+#define IP_VERSION 0x40   /* IPv4 */
+                          // FIXME: check the actual length of the structure
+#define IP_HEADER_LEN                                                          \
+    0x05 /* Default IP header length == five 32-bits words.                    \
+          */
+#define IP_VERSION_HDRLEN                                                      \
+    (IP_VERSION | IP_HEADER_LEN) /* Actual field of the IPv4 header */
 
 /* ------------------------ Default Packet Structure ------------------------ */
 
@@ -56,5 +65,9 @@
 #define OFFSET_PKT_DATA (OFFSET_PKT_PAYLOAD + OFFSET_PAYLOAD_DATA)
 
 #define PKT_HEADER_SIZE (OFFSET_PKT_PAYLOAD - OFFSET_PKT_ETHER)
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
 #endif /* CONSTANTS_H */

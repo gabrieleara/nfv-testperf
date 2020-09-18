@@ -24,11 +24,15 @@ SRCS-y      += main.c config.c commands.c timestamp.c loops.c stats.c nfv_socket
 
 # Extra compilation and preprocessing flags
 CFLAGS      += -iquote $(THIS_DIR)/inc
-CFLAGS      += -Wall -Wextra -pedantic -Werror -march=native
+CFLAGS      += -Wall -Wextra -march=native
 CFLAGS      += -O3
 # NOTICE: the next one is only for DEBUG PURPOSES!
-#CFLAGS      += -O0 -ggdb
-CFLAGS      += $(WERROR_FLAGS)
+CFLAGS      += -O0 -ggdb
+# CFLAGS      += $(WERROR_FLAGS)
+
+LDFLAGS     += -lstdc++
+
+CXXFLAGS    += -std=c++14
 
 include $(RTE_SDK)/mk/rte.extapp.mk
 
@@ -40,6 +44,9 @@ print_vars:
 	@echo CPPFLAGS: $(CPPFLAGS)
 	@echo CFLAGS: $(CFLAGS)
 
+%.o: %.cpp
+	@echo "  CXX $@"
+	@$(CXX) $(CFLAGS) $(CXXFLAGS) -c -o $@ $<
 
 # rewriting installation rule to copy target in container
 # install: build _postinstall __postinstall

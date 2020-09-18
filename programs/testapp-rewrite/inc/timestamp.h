@@ -3,6 +3,10 @@
 
 #include <rte_cycles.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef uint64_t tsc_t;
 
 extern volatile tsc_t __tsc_last;
@@ -33,5 +37,9 @@ static inline tsc_t tsc_get_hz(void)
 {
     return rte_get_tsc_hz();
 }
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
 #endif

@@ -6,10 +6,19 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#ifndef __cplusplus
 #include <stdatomic.h>
+#else
+#include <atomic>
+#define _Atomic(X) std::atomic<X>
+#endif
 
 #include "timestamp.h"
 #include <rte_memory.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* ******************** STRUCTS ******************** */
 
@@ -84,5 +93,9 @@ extern void stats_print_all(struct stats *s);
 /* ******************** CONSTANTS ******************** */
 
 extern const struct stats STATS_INIT;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // STATS_H
