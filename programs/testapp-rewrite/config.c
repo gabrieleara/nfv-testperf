@@ -20,8 +20,6 @@
 #include "config.h"
 #include "constants.h"
 
-// #include "dpdk.h"
-
 /* ------------------------------- Constants -------------------------------- */
 
 #define NO_ADDR_PORT                                                           \

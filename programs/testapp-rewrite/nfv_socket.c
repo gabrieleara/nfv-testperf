@@ -2,7 +2,7 @@
 #include "config.h"
 #include "constants.h"
 
-// #include "nfv_socket_dpdk.h"
+#include "nfv_socket_dpdk.h"
 #include "nfv_socket_simple.h"
 
 /* ----------------------- CLASS FUNCTION DEFINITIONS ----------------------- */
@@ -23,7 +23,7 @@ NFV_SIGNATURE(void, init, config_ptr conf) {
 nfv_socket_ptr nfv_socket_factory_get(config_ptr conf) {
     struct nfv_socket base;
     struct nfv_socket_simple *socket_simple;
-    // struct nfv_socket_dpdk *socket_dpdk;
+    struct nfv_socket_dpdk *socket_dpdk;
 
     // Initialize base attributes
     nfv_socket_init(&base, conf);
@@ -44,29 +44,25 @@ nfv_socket_ptr nfv_socket_factory_get(config_ptr conf) {
         base.classcode = NFV_SOCK_SIMPLE;
 #endif
         socket_simple->super = base;
-
         nfv_socket_simple_init((nfv_socket_ptr)socket_simple, conf);
-
         return (nfv_socket_ptr)socket_simple;
+
     case NFV_SOCK_DPDK:
-        // socket_dpdk = malloc(sizeof(struct nfv_socket_dpdk));
+        socket_dpdk = malloc(sizeof(struct nfv_socket_dpdk));
 
 #ifdef USE_FPTRS
-        // // Initialize methods of subclass
-        // socket_dpdk->super.request_out_buffers =
-        // nfv_socket_dpdk_request_out_buffers; socket_dpdk->super.send =
-        // nfv_socket_dpdk_send; socket_dpdk->super.recv = nfv_socket_dpdk_recv;
-        // socket_dpdk->super.send_back = nfv_socket_dpdk_send_back;
-        // socket_dpdk->super.free_buffers = nfv_socket_dpdk_free_buffers;
+        // Initialize methods of subclass
+        base.request_out_buffers = nfv_socket_dpdk_request_out_buffers;
+        base.send = nfv_socket_dpdk_send;
+        base.recv = nfv_socket_dpdk_recv;
+        base.send_back = nfv_socket_dpdk_send_back;
 #else
-        // base.classcode = NFV_SOCK_DPDK;
+        base.classcode = NFV_SOCK_DPDK;
 #endif
 
-        // socket_dpdk->super = base;
-
-        // nfv_socket_simple_init((nfv_socket_ptr) socket_dpdk, conf);
-
-        // return (nfv_socket_ptr)socket_dpdk;
+        socket_dpdk->super = base;
+        nfv_socket_dpdk_init((nfv_socket_ptr)socket_dpdk, conf);
+        return (nfv_socket_ptr)socket_dpdk;
     default:
         assert(false);
         return NULL;
@@ -80,9 +76,8 @@ nfv_socket_ptr nfv_socket_factory_get(config_ptr conf) {
     if ((self->classcode & NFV_SOCK_SIMPLE) != 0)                              \
         return nfv_socket_simple_##method(self, ##__VA_ARGS__);                \
     else if ((self->classcode & NFV_SOCK_DPDK) != 0)                           \
-        return 0;                                                              \
+        return nfv_socket_dpdk_##method(self, ##__VA_ARGS__);                  \
     return 0;
-// return nfv_socket_dpdk_request_out_buffers(self, buffers, howmany);
 
 NFV_SIGNATURE(size_t, request_out_buffers, buffer_t buffers[], size_t howmany) {
     NFV_CALL_RETURN(self, request_out_buffers, buffers, howmany);

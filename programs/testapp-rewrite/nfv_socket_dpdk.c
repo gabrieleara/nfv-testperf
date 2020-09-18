@@ -1,85 +1,164 @@
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
 
+#include <rte_ethdev.h>
+
+#include "config.h"
+#include "constants.h"
 #include "nfv_socket_dpdk.h"
 
-#include <sys/socket.h>
+#define dpdk_packet_start(p, t) rte_pktmbuf_mtod(p, t)
+#define dpdk_packet_offset(p, t, o) rte_pktmbuf_mtod_offset(p, t, o)
 
-#define UNUSED(x) ((void)x)
+/*
+static inline struct rte_ether_hdr *dpdk_ether_hdr(struct rte_mbuf *pkt) {
+    return dpdk_packet_offset(pkt, struct rte_ether_hdr *, OFFSET_PKT_ETHER);
+}
 
-NFV_SOCKET_DPDK_SIGNATURE(void, init, config_ptr conf)
-{
-    // TODO: must know the type of socket to be initialized
+static inline struct rte_ipv4_hdr *dpdk_ipv4_hdr(struct rte_mbuf *pkt) {
+    return dpdk_packet_offset(pkt, struct rte_ipv4_hdr *, OFFSET_PKT_IPV4);
+}
+
+static inline struct rte_udp_hdr *dpdk_udp_hdr(struct rte_mbuf *pkt) {
+    return dpdk_packet_offset(pkt, struct rte_udp_hdr *, OFFSET_PKT_UDP);
+}
+*/
+
+static inline byte_t *dpdk_payload(struct rte_mbuf *pkt) {
+    return dpdk_packet_offset(pkt, byte_t *, OFFSET_PKT_PAYLOAD);
+}
+
+/*
+static inline void dpdk_swap_ether_addr(struct rte_mbuf *pkt) {
+    struct rte_ether_hdr *ether_hdr = dpdk_ether_hdr(pkt);
+    swap_ether_addr(ether_hdr);
+}
+
+static inline void dpdk_swap_ipv4_addr(struct rte_mbuf *pkt) {
+    struct rte_ipv4_hdr *ipv4_hdr = dpdk_ipv4_hdr(pkt);
+    swap_ipv4_addr(ipv4_hdr);
+}
+
+static inline void dpdk_swap_udp_port(struct rte_mbuf *pkt) {
+    struct rte_udp_hdr *udp_hdr = dpdk_udp_hdr(pkt);
+    swap_udp_port(udp_hdr);
+}
+*/
+
+static inline NFV_DPDK_SIGNATURE(void, free_buffers) {
+    struct nfv_socket_dpdk *sself = (struct nfv_socket_dpdk *)(self);
+    if (unlikely(sself->used_buffers < sself->active_buffers)) {
+        for (; sself->used_buffers < sself->active_buffers;
+             ++sself->used_buffers) {
+            rte_pktmbuf_free(sself->packets[sself->used_buffers]);
+        }
+        sself->active_buffers = 0;
+    }
+    sself->used_buffers = 0;
+}
+
+static inline NFV_DPDK_SIGNATURE(void, fill_buffer_array, buffer_t buffers[],
+                                 size_t howmany) {
+    struct nfv_socket_dpdk *sself = (struct nfv_socket_dpdk *)(self);
+    for (size_t i = 0; i < howmany; ++i) {
+        buffers[i] = dpdk_payload(sself->packets[i]);
+    }
+}
+
+static inline void dpdk_prepare_packet(struct rte_mbuf *pkt, size_t size,
+                                       struct rte_ether_hdr *eth_hdr,
+                                       struct rte_ipv4_hdr *ip_hdr,
+                                       struct rte_udp_hdr *udp_hdr) {
+    rte_pktmbuf_reset_headroom(pkt);
+
+    // Only one segment containing the packet of size size
+    pkt->data_len = size;
+    pkt->pkt_len = pkt->data_len;
+    pkt->next = NULL;
+    pkt->nb_segs = 1;
+    pkt->ol_flags = 0;
+    pkt->vlan_tci = 0;
+    pkt->vlan_tci_outer = 0;
+    pkt->l2_len = sizeof(struct rte_ether_hdr);
+    pkt->l3_len = sizeof(struct rte_ipv4_hdr);
+
+    byte_t *start = dpdk_packet_start(pkt, byte_t *);
+
+    // Copy all headers in the packet
+    rte_memcpy(start + OFFSET_PKT_ETHER, eth_hdr, sizeof(struct rte_ether_hdr));
+    rte_memcpy(start + OFFSET_PKT_IPV4, ip_hdr, sizeof(struct rte_ipv4_hdr));
+    rte_memcpy(start + OFFSET_PKT_UDP, udp_hdr, sizeof(struct rte_udp_hdr));
+}
+
+NFV_DPDK_SIGNATURE(void, init, config_ptr conf) {
     struct nfv_socket_dpdk *sself = (struct nfv_socket_dpdk *)(self);
 
-    // Initialize constant variables
-    sself->dpdk_port = conf->sock_fd;
+    sself->active_buffers = 0;
+    sself->used_buffers = 0;
 
-    // Initialize addrlen sself->addrlen = sizeof(struct sockaddr_in);
+    sself->portid = conf->dpdk.portid;
+    sself->mbufs = conf->dpdk.mbufs;
 
-    /* ------------------------- Memory allocation -------------------------- */
-
-    // I need to allocate `burst_size` pointers to DPDK buffers
-    pkts_burst = malloc(sizeof(struct rte_mbuf *) * sself->super.burst_size);
-
-    /* --------------------- Structures initialization ---------------------- */
+    sself->packets = malloc(sizeof(rte_buffer_t) * self->burst_size);
 
     // Setup packet headers
-    dpdk_setup_pkt_headers(&pkt_eth_hdr, &pkt_ip_hdr, &pkt_udp_hdr, conf);
-
-    /* ---------------------------------------------------------------------- */
-
-    // FIXME: pointers in super-class must be changed in request_out_buffers
+    pkt_hdr_setup(&sself->incoming_hdr, conf, DIR_INCOMING);
+    pkt_hdr_setup(&sself->outgoing_hdr, conf, DIR_OUTGOING);
 }
 
-// FIXME: if I give less than burst_size here, I should remember it because
-// otherwise the send would send too many packets
-NFV_SOCKET_DPDK_SIGNATURE(void, request_out_buffers, byte_ptr_t *buffers, size_t size, size_t howmany)
-{
+NFV_DPDK_SIGNATURE(size_t, request_out_buffers, buffer_t buffers[],
+                   size_t howmany) {
     struct nfv_socket_dpdk *sself = (struct nfv_socket_dpdk *)(self);
 
-    struct rte_mbuf *pkt;
+    if (unlikely(howmany > self->burst_size))
+        howmany = self->burst_size;
 
-    // ASSUMES howmany <= burst_size AND THAT PREVIOUS BUFFERS HAVE BEEN RELEASED!
-    for (sself->pkts_prepared = 0; sself->pkts_prepared < howmany; sself->pkts_prepared++)
-    {
-        pkt = rte_mbuf_raw_alloc(sself->mbufs);
+    nfv_socket_dpdk_free_buffers(self);
 
-        if (unlikely(pkt == NULL))
-        {
-            fprintf(
-                stderr,
-                "WARN: Could not allocate a buffer, using less packets than required burst size!\n");
-            return sself->pkts_prepared;
+    size_t i;
+    for (i = 0; i < howmany; ++i) {
+        // FIXME: from DPDK documentation, "for standard use, prefer
+        // rte_pktmbuf_alloc()"
+        sself->packets[i] = rte_mbuf_raw_alloc(sself->mbufs);
+        if (unlikely(sself->packets[i] == NULL)) {
+            fprintf(stderr,
+                    "WARN: Could not allocate buffer, using %lu instead of the "
+                    "%lu requested buffers!\n",
+                    i, howmany);
+            break;
         }
 
-        // TODO: should prepare in advance the header of each packet
-        dpdk_pkt_prepare(pkt, conf, &sself->pkt_eth_hdr, &sself->pkt_ip_hdr, &sself->pkt_udp_hdr);
-
-        buffers[sself->pkts_prepared] = pkt + SOME_DPDK_OFFSET_FOR_PAYLOAD;
+        dpdk_prepare_packet(sself->packets[i], self->packet_size,
+                            &sself->outgoing_hdr.ether, &sself->outgoing_hdr.ip,
+                            &sself->outgoing_hdr.udp);
     }
+
+    sself->active_buffers += i;
+    nfv_socket_dpdk_fill_buffer_array(self, buffers, howmany);
+
+    return sself->active_buffers;
 }
 
-NFV_SOCKET_DPDK_SIGNATURE(ssize_t, send)
-{
+NFV_DPDK_SIGNATURE(ssize_t, send, size_t howmany) {
     struct nfv_socket_dpdk *sself = (struct nfv_socket_dpdk *)(self);
 
-    int num_sent = 0;
+    size_t num_sent;
 
-    num_sent = rte_eth_tx_burst(sself->dpdk_port, 0, sself->pkts_burst, sself->pkts_prepared);
+    if (unlikely(howmany > sself->active_buffers - sself->used_buffers))
+        howmany = sself->active_buffers - sself->used_buffers;
 
-    // TODO: DO NOT FREE BUFFERS HERE, FREE BUFFERS ONLY WHEN EXPLICITLY CALLED
-    // TODO: INSTEAD, MOVE THE POINTERS TO THE BUFFERS BACKWARDS
-    for (int pkt_idx = num_sent; pkt_idx < sself->pkts_prepared; ++pkt_idx)
-    {
-        rte_pktmbuf_free(sself->pkts_burst[pkt_idx]);
-    }
+    if (unlikely(howmany == 0))
+        return 0;
+
+    // TODO: rte_eth_dev_configure with queues?
+    num_sent = rte_eth_tx_burst(sself->portid, 0,
+                                sself->packets + sself->used_buffers, howmany);
+
+    if (likely(num_sent > 0))
+        sself->used_buffers += num_sent;
 
     return num_sent;
 }
 
-//FIXME:
+// FIXME: put this somewhere maybe?
 // THIS IS USED TO INFORM LEARNING SWITCHES WHERE THE MAC ADDRESS OF
 // THIS APPLICATION RESIDES (A SORT OF ARP ADVERTISEMENT)
 // if (adv_counter >= advertisement_period) {
@@ -87,69 +166,77 @@ NFV_SOCKET_DPDK_SIGNATURE(ssize_t, send)
 //     adv_counter = 0;
 // }
 
-// BUG: for the server there is no way to check who sent a message and construct
-// the appropriate headers as of now. ALSO BUG: for raw sockets should check
-// that the destination address is this address
-NFV_SOCKET_DPDK_SIGNATURE(ssize_t, recv, byte_ptr_t *buffers, size_t size, size_t howmany)
-{
-    size_t pkts_actually_rx;
-    size_t pkts_rx;
+NFV_DPDK_SIGNATURE(ssize_t, recv, buffer_t buffers[], size_t howmany) {
+    struct nfv_socket_dpdk *sself = (struct nfv_socket_dpdk *)(self);
+    size_t num_recv;
+    size_t num_recv_good;
     size_t i;
 
-    struct nfv_socket_dpdk *sself = (struct nfv_socket_dpdk *)(self);
+    if (unlikely(howmany > self->burst_size))
+        howmany = self->burst_size;
 
-    int num_recv = 0;
+    nfv_socket_dpdk_free_buffers(self);
 
-    pkts_rx = rte_eth_rx_burst(sself->dpdk_port, 0, sself->pkts_burst, howmany); // ASSUMES howmany <= burst_size
-    pkts_actually_rx = 0;
+    num_recv = rte_eth_rx_burst(sself->portid, 0, sself->packets, howmany);
+    num_recv_good = 0;
 
-    // Filter-out packets NOT meant for this application
-    for (i = 0; i < pkts_rx; ++i)
-    {
-        if (dpdk_check_dst_addr_port(sself->pkts_burst[i], conf)) // TODO
-        {
-            // Packet was meant for this application!
-            sself->pkts_burst[pkts_actually_rx] = sself->pkts_burst[i];
-            ++pkts_actually_rx;
+    // I put a "likely" here to prefer scenarios in which there is actually
+    // something to do with the incoming packets.
+    if (likely(num_recv > 0)) {
+        // Filter-out packets NOT meant for this application
+        for (i = 0; i < num_recv; ++i) {
+            // TODO: implement this without conf
+            const struct pkt_hdr *header =
+                dpdk_packet_start(sself->packets[i], struct pkt_hdr *);
+
+            if (hdr_check_incoming(header, &sself->incoming_hdr)) {
+                // Packet was meant for this application!
+                sself->packets[num_recv_good] = sself->packets[i];
+                ++num_recv_good;
+            } else {
+                // Free this buffer, do not increase num_recv_good
+                rte_pktmbuf_free(sself->packets[i]);
+            }
         }
-        else
-        {
-            // Free this buffer and do not increase the counter
-            rte_pktmbuf_free(sself->pkts_burst[i]);
-        }
+
+        sself->active_buffers += num_recv_good;
     }
 
-    return pkts_actually_rx;
+    nfv_socket_dpdk_fill_buffer_array(self, buffers, howmany);
+
+    return num_recv_good;
 }
 
 // CHECK: should this be simply equal to send with some arrangements of the
-// headers? CHECK: I think for sendmmsg it could be as easy as calling simply
-// sendmsg/sendmmsg, because the headers are updated by recvmsg/recvmmsg calls
-NFV_SOCKET_DPDK_SIGNATURE(ssize_t, send_back)
-{
+// headers? CHECK: I think for sendmmsg it could be as easy as calling
+// simply sendmsg/sendmmsg, because the headers are updated by
+// recvmsg/recvmmsg calls
+NFV_DPDK_SIGNATURE(ssize_t, send_back, size_t howmany) {
     struct nfv_socket_dpdk *sself = (struct nfv_socket_dpdk *)(self);
-    struct rte_ipv4_hdr *pkt_ip_hdr;
 
-    for (size_t i = 0; i < howmany; ++i)
-    {
-        // Swap sender and receiver addresses/ports
-        dpdk_swap_ether_addr(sself->pkts_burst[i]);
-        dpdk_swap_ipv4_addr(sself->pkts_burst[i]);
-        dpdk_swap_udp_port(sself->pkts_burst[i]);
+    if (unlikely(howmany > sself->active_buffers - sself->used_buffers))
+        howmany = sself->active_buffers - sself->used_buffers;
 
-        pkt_ip_hdr = dpdk_pkt_offset(sself->pkts_burst[i], struct rte_ipv4_hdr *, OFFSET_PKT_IPV4);
-        pkt_ip_hdr->hdr_checksum = ipv4_hdr_checksum(pkt_ip_hdr);
+    if (unlikely(howmany == 0))
+        return 0;
+
+    struct rte_ipv4_hdr *ip_hdr;
+
+    for (size_t i = 0; i < howmany; ++i) {
+        size_t j = i + sself->used_buffers;
+
+        byte_t *packet_start = dpdk_packet_start(sself->packets[j], byte_t *);
+
+        swap_ether_addr((struct rte_ether_hdr *)packet_start +
+                        OFFSET_PKT_ETHER);
+        swap_ipv4_addr((struct rte_ipv4_hdr *)packet_start + OFFSET_PKT_IPV4);
+        swap_udp_port((struct rte_udp_hdr *)packet_start + OFFSET_PKT_UDP);
+
+        // Calculate ip_hdr new checksum
+        ip_hdr = (struct rte_ipv4_hdr *)(packet_start + OFFSET_PKT_IPV4);
+        ip_hdr->hdr_checksum = 0;
+        ip_hdr->hdr_checksum = rte_ipv4_cksum(ip_hdr);
     }
 
-    sself->pkts_prepared = howmany;
-
-    NFV_CALL(self, send);
-
-    return 0;
-}
-
-NFV_SOCKET_DPDK_SIGNATURE(void, free_buffers)
-{
-    // TODO: FREE RECEIVED BUFFERS THAT HAVE NOT BEEN FREED BEFORE!
-    UNUSED(self);
+    return nfv_socket_dpdk_send(self, howmany);
 }

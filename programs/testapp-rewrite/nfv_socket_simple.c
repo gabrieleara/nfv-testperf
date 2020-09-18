@@ -9,16 +9,11 @@
 #include "constants.h"
 #include "nfv_socket_simple.h"
 
-// DEBUG STUFF
-#include <errno.h>
-#include <stdio.h>
-
 // FIXME: all kinds of error checking for mallocs...
 
 NFV_SIMPLE_SIGNATURE(void, init, config_ptr conf) {
     struct nfv_socket_simple *sself = (struct nfv_socket_simple *)(self);
 
-    sself->last_recv_howmany = 0; // TODO: is this used or not?
     sself->active_buffers = 0;
     sself->used_buffers = 0;
 
@@ -88,17 +83,20 @@ NFV_SIMPLE_SIGNATURE(void, init, config_ptr conf) {
 
     // TODO: probably frame_hdr riesco a tenerlo all'interno del costruttore
     if (sself->is_raw) {
-        // For RAW sockets we need to build a frame header, the same for
-        // each packet
-        // FIXME: Implement packet headers initialization
-        // dpdk_setup_pkt_headers(&sself->pkt_eth_hdr, &sself->pkt_ip_hdr,
-        // &sself->pkt_udp_hdr, conf);
-        memcpy(sself->frame_hdr + OFFSET_PKT_ETHER, &sself->pkt_eth_hdr,
-               sizeof(struct rte_ether_hdr));
-        memcpy(sself->frame_hdr + OFFSET_PKT_IPV4, &sself->pkt_ip_hdr,
-               sizeof(struct rte_ipv4_hdr));
-        memcpy(sself->frame_hdr + OFFSET_PKT_UDP, &sself->pkt_udp_hdr,
-               sizeof(struct rte_udp_hdr));
+        pkt_hdr_setup(&sself->incoming_hdr, conf, DIR_INCOMING);
+        pkt_hdr_setup(&sself->outgoing_hdr, conf, DIR_OUTGOING);
+
+        rte_memcpy(sself->frame_hdr, &sself->incoming_hdr,
+                   OFFSET_PKT_PAYLOAD - OFFSET_PKT_ETHER);
+
+        /*
+        rte_memcpy(sself->frame_hdr + OFFSET_PKT_ETHER, &sself->ether_hdr,
+                   sizeof(struct rte_ether_hdr));
+        rte_memcpy(sself->frame_hdr + OFFSET_PKT_IPV4, &sself->ip_hdr,
+                   sizeof(struct rte_ipv4_hdr));
+        rte_memcpy(sself->frame_hdr + OFFSET_PKT_UDP, &sself->udp_hdr,
+                   sizeof(struct rte_udp_hdr));
+        */
 
         // Set the socket sending buffer size equal to the desired frame
         // size.
@@ -112,7 +110,7 @@ NFV_SIMPLE_SIGNATURE(void, init, config_ptr conf) {
         // If using raw sockets, copy frame header into each packet
         // TODO: this operation needed only for outgoing packets
         for (size_t i = 0; i < self->burst_size; ++i)
-            memcpy(sself->packets[i], sself->frame_hdr, PKT_HEADER_SIZE);
+            rte_memcpy(sself->packets[i], sself->frame_hdr, PKT_HEADER_SIZE);
     }
 
     // Finally, initialize payload pointers in base class
@@ -130,8 +128,7 @@ NFV_SIMPLE_SIGNATURE(size_t, request_out_buffers, buffer_t buffers[],
         howmany = self->burst_size;
 
     // Implicit free of all previously acquired buffers
-    if (likely(sself->active_buffers > 0))
-        sself->active_buffers = 0;
+    sself->active_buffers = 0;
 
     for (size_t i = 0; i < howmany; ++i)
         buffers[i] = self->payloads[i];
@@ -149,8 +146,8 @@ NFV_SIMPLE_SIGNATURE(ssize_t, send, size_t howmany) {
 
     byte_t base_buffers_ptr[sself->used_size * self->burst_size];
 
-    memcpy(base_buffers_ptr, sself->packets[0],
-           sizeof(byte_t) * sself->used_size * self->burst_size);
+    rte_memcpy(base_buffers_ptr, sself->packets[0],
+               sizeof(byte_t) * sself->used_size * self->burst_size);
 
     if (unlikely(howmany > sself->active_buffers - sself->used_buffers))
         howmany = sself->active_buffers - sself->used_buffers;
@@ -169,7 +166,6 @@ NFV_SIMPLE_SIGNATURE(ssize_t, send, size_t howmany) {
                 sself->sock_fd,
                 &(sself->datagrams[num_sent + sself->used_buffers].msg_hdr), 0);
             if (res < 0 || ((size_t)(res)) != sself->used_size) {
-                fprintf(stderr, "%s\n", strerror(errno));
                 break;
             }
         }
@@ -185,7 +181,8 @@ NFV_SIMPLE_SIGNATURE(ssize_t, send, size_t howmany) {
 NFV_SIMPLE_SIGNATURE(ssize_t, recv, byte_ptr_t *buffers, size_t howmany) {
     struct nfv_socket_simple *sself = (struct nfv_socket_simple *)(self);
 
-    ssize_t num_recv = 0;
+    ssize_t num_recv;
+    ssize_t num_recv_good;
 
     if (unlikely(howmany > self->burst_size))
         howmany = self->burst_size;
@@ -213,19 +210,37 @@ NFV_SIMPLE_SIGNATURE(ssize_t, recv, byte_ptr_t *buffers, size_t howmany) {
         }
     }
 
+    num_recv_good = num_recv;
+
     // I put a "likely" here to prefer scenarios in which there is actually
     // something to do with the incoming packets.
     if (likely(num_recv > 0)) {
-        sself->active_buffers = ((size_t)(num_recv));
+        if (sself->is_raw) {
+            num_recv_good = 0;
 
-        // FIXME: check packet headers and copy back buffers[j] into the right
-        // ones buffer[i] with i<=j
+            // Filter-out packets NOT meant for this application
+            for (ssize_t i = 0; i < num_recv; ++i) {
+                const struct pkt_hdr *header =
+                    (struct pkt_hdr *)sself->packets[i];
 
-        for (size_t i = 0; i < sself->active_buffers; ++i)
+                if (hdr_check_incoming(header, &sself->incoming_hdr)) {
+                    // Packet was meant for this application!
+                    sself->packets[num_recv_good] = sself->packets[i];
+                    ++num_recv_good;
+                } else {
+                    // Implicit free of this buffer by not increasing
+                    // num_recv_good
+                }
+            }
+        }
+
+        sself->active_buffers += (size_t)num_recv_good;
+
+        for (ssize_t i = 0; i < num_recv_good; ++i)
             buffers[i] = self->payloads[i];
     }
 
-    return num_recv;
+    return num_recv_good;
 }
 
 NFV_SIMPLE_SIGNATURE(ssize_t, send_back, size_t howmany) {
@@ -237,27 +252,23 @@ NFV_SIMPLE_SIGNATURE(ssize_t, send_back, size_t howmany) {
     if (unlikely(howmany == 0))
         return 0;
 
-    struct rte_ipv4_hdr *pkt_ip_hdr;
-
     // If using raw sockets, swap addresses information too
     if (sself->is_raw) {
+        struct rte_ipv4_hdr *ip_hdr;
+
         for (size_t i = 0; i < howmany; ++i) {
             size_t j = i + sself->used_buffers;
 
-#define UNUSED(x) ((void)(x))
-            UNUSED(pkt_ip_hdr);
-            UNUSED(j);
-            /*
-            swap_ether_addr(
-                (struct rte_ether_hdr *)(sself->packets[j] + OFFSET_PKT_ETHER));
-            swap_ipv4_addr(
-                (struct rte_ipv4_hdr *)(sself->packets[j] + OFFSET_PKT_IPV4));
-            swap_udp_port(
-                (struct rte_udp_hdr *)(sself->packets[j] + OFFSET_PKT_UDP));
+            swap_ether_addr((struct rte_ether_hdr *)sself->packets[j] +
+                            OFFSET_PKT_ETHER);
+            swap_ipv4_addr((struct rte_ipv4_hdr *)sself->packets[j] +
+                           OFFSET_PKT_IPV4);
+            swap_udp_port((struct rte_udp_hdr *)sself->packets[j] +
+                          OFFSET_PKT_UDP);
 
-            pkt_ip_hdr = sself->packets[j] + OFFSET_PKT_IPV4;
-            pkt_ip_hdr->hdr_checksum = ipv4_hdr_checksum(pkt_ip_hdr);
-            */
+            ip_hdr = (struct rte_ipv4_hdr *)sself->packets[j] + OFFSET_PKT_IPV4;
+            ip_hdr->hdr_checksum = 0;
+            ip_hdr->hdr_checksum = rte_ipv4_cksum(ip_hdr);
         }
     }
 

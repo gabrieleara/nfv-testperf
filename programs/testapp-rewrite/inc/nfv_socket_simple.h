@@ -1,16 +1,10 @@
 #ifndef NFV_SOCKET_SIMPLE_H
 #define NFV_SOCKET_SIMPLE_H
 
+#include "hdr_tools.h"
 #include "nfv_socket.h"
 
 #include <stdbool.h>
-
-#include <rte_ether.h>
-#include <rte_ip.h>
-#include <rte_udp.h>
-
-// TODO: remove
-#include "constants.h"
 
 /* ---------------------------- TYPE DEFINITIONS ---------------------------- */
 
@@ -52,12 +46,9 @@ struct nfv_socket_simple {
     /* The starting point for packet payload, zero for UDP sockets */
     /* const */ size_t base_offset;
 
-    size_t last_recv_howmany; // TODO: = 0;
-
     /* Header structures, used by raw sockets only */
-    struct rte_ether_hdr pkt_eth_hdr;
-    struct rte_ipv4_hdr pkt_ip_hdr;
-    struct rte_udp_hdr pkt_udp_hdr;
+    struct pkt_hdr outgoing_hdr;
+    struct pkt_hdr incoming_hdr;
 
     /* Data structure used to hold the frame header, used by raw sockets only */
     byte_t frame_hdr[PKT_HEADER_SIZE];
