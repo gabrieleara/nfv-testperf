@@ -137,6 +137,7 @@ void send_loop(struct config *conf) {
             // Request buffers where to write our packets from the library The
             // library will fill header information if necessary (example.
             // SOCK_RAW or DPDK)
+            // FIXME: work with less packets if returned less
             nfv_socket_request_out_buffers(socket, buffers, conf->bst_size);
 
             // Put payload data in each packet
@@ -341,6 +342,8 @@ void pong_loop(struct config *conf) {
                        tsc_diff, tsc_hz);
             }
         }
+
+        int num_sent = nfv_socket_send_back(socket, num_recv);
     }
 
     __builtin_unreachable();
