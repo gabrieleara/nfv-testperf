@@ -202,7 +202,7 @@ NFV_DPDK_SIGNATURE(ssize_t, recv, buffer_t buffers[], size_t howmany) {
         sself->active_buffers += num_recv_good;
     }
 
-    nfv_socket_dpdk_fill_buffer_array(self, buffers, howmany);
+    nfv_socket_dpdk_fill_buffer_array(self, buffers, num_recv_good);
 
     return num_recv_good;
 }

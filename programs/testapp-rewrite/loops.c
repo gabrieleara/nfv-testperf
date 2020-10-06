@@ -138,10 +138,11 @@ void send_loop(struct config *conf) {
             // library will fill header information if necessary (example.
             // SOCK_RAW or DPDK)
             // FIXME: work with less packets if returned less
-            nfv_socket_request_out_buffers(socket, buffers, conf->bst_size);
+            size_t howmany =
+                nfv_socket_request_out_buffers(socket, buffers, conf->bst_size);
 
             // Put payload data in each packet
-            for (size_t i = 0; i < conf->bst_size; ++i) {
+            for (size_t i = 0; i < howmany; ++i) {
                 // The first element will have the current value of the tsc,
                 // then a dummy payload will be inserted to fill the packet The
                 // tsc value is taken after producing the dummy data
@@ -159,7 +160,7 @@ void send_loop(struct config *conf) {
 
             // Use one single call to send data (the library will then convert
             // to the appropriate single or multiple calls)
-            num_sent = nfv_socket_send(socket, conf->bst_size);
+            num_sent = nfv_socket_send(socket, howmany);
 
             // Errors are considered all dropped packets
             if (num_sent < 0) {
@@ -342,8 +343,6 @@ void pong_loop(struct config *conf) {
                        tsc_diff, tsc_hz);
             }
         }
-
-        int num_sent = nfv_socket_send_back(socket, num_recv);
     }
 
     __builtin_unreachable();
