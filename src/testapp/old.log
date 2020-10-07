@@ -1,0 +1,42 @@
+CONFIGURATION
+-------------------------------------
+rate (pps)	10000000
+pkt size	64
+bst size	32
+sock type	udp
+port local	16994
+port remote	13994
+ip local	127.0.0.1
+ip remote	127.0.0.1
+mac local	02:00:00:00:00:01
+mac remote	02:00:00:00:00:02
+using mmmsg API	yes
+silent		no
+touch data	no
+-------------------------------------
+Rx-pps: 0
+Rx-pps: 0
+Rx-pps: 0
+Rx-pps: 70270
+Rx-pps: 241414
+Rx-pps: 238403
+Rx-pps: 237153
+Rx-pps: 240111
+Rx-pps: 241879
+Rx-pps: 241875
+Rx-pps: 200607
+
+Caught signal Interrupt!
+-------------------------------------
+FINAL STATS
+Rx-pps: 0
+Rx-pps: 0
+Rx-pps: 0
+Rx-pps: 70270
+Rx-pps: 241414
+Rx-pps: 238403
+Rx-pps: 237153
+Rx-pps: 240111
+Rx-pps: 241879
+Rx-pps: 241875
+Rx-pps: 200607

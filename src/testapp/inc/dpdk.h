@@ -21,18 +21,17 @@
 extern int dpdk_init(int argc, char *argv[], struct config *conf);
 
 #define OFFSET_ETHER (0)
-#define OFFSET_IPV4 (OFFSET_ETHER + sizeof(struct ether_hdr))
-#define OFFSET_UDP (OFFSET_IPV4 + sizeof(struct ipv4_hdr))
-#define OFFSET_PAYLOAD (OFFSET_UDP + sizeof(struct udp_hdr))
+#define OFFSET_IPV4 (OFFSET_ETHER + sizeof(struct rte_ether_hdr))
+#define OFFSET_UDP (OFFSET_IPV4 + sizeof(struct rte_ipv4_hdr))
+#define OFFSET_PAYLOAD (OFFSET_UDP + sizeof(struct rte_udp_hdr))
 // #define OFFSET_PAYLOAD_tsc (OFFSET_PAYLOAD)
 
 #define PKT_HEADER_SIZE (OFFSET_PAYLOAD - OFFSET_ETHER)
 
-extern void dpdk_setup_pkt_headers(
-    struct ether_hdr *eth_hdr,
-    struct ipv4_hdr *ip_hdr,
-    struct udp_hdr *udp_hdr,
-    struct config *conf);
+extern void dpdk_setup_pkt_headers(struct rte_ether_hdr *eth_hdr,
+                                   struct rte_ipv4_hdr *ip_hdr,
+                                   struct rte_udp_hdr *rte_udp_hdr,
+                                   struct config *conf);
 
 // Assuming that a packet will always fit into a buffer
 static inline void copy_buf_to_pkt(
@@ -47,35 +46,25 @@ static inline void copy_pkt_to_buf(
     rte_memcpy(buf, rte_pktmbuf_mtod_offset(pkt, char *, offset), (size_t)len);
 }
 
-static inline void dpdk_pkt_prepare(struct rte_mbuf *pkt,
-                                    struct config *conf,
-                                    struct ether_hdr *pkt_eth_hdr,
-                                    struct ipv4_hdr *pkt_ip_hdr,
-                                    struct udp_hdr *pkt_udp_hdr)
-{
+static inline void dpdk_pkt_prepare(struct rte_mbuf *pkt, struct config *conf,
+                                    struct rte_ether_hdr *pkt_eth_hdr,
+                                    struct rte_ipv4_hdr *pkt_ip_hdr,
+                                    struct rte_udp_hdr *pkt_udp_hdr) {
     rte_pktmbuf_reset_headroom(pkt);
     pkt->data_len = conf->pkt_size;
     pkt->pkt_len = pkt->data_len;
     pkt->next = NULL;
 
-    copy_buf_to_pkt(pkt_eth_hdr,
-                    sizeof(struct ether_hdr),
-                    pkt,
+    copy_buf_to_pkt(pkt_eth_hdr, sizeof(struct rte_ether_hdr), pkt,
                     OFFSET_ETHER);
-    copy_buf_to_pkt(pkt_ip_hdr,
-                    sizeof(struct ipv4_hdr),
-                    pkt,
-                    OFFSET_IPV4);
-    copy_buf_to_pkt(pkt_udp_hdr,
-                    sizeof(struct udp_hdr),
-                    pkt,
-                    OFFSET_UDP);
+    copy_buf_to_pkt(pkt_ip_hdr, sizeof(struct rte_ipv4_hdr), pkt, OFFSET_IPV4);
+    copy_buf_to_pkt(pkt_udp_hdr, sizeof(struct rte_udp_hdr), pkt, OFFSET_UDP);
     pkt->nb_segs = 1;
     pkt->ol_flags = 0;
     pkt->vlan_tci = 0;
     pkt->vlan_tci_outer = 0;
-    pkt->l2_len = sizeof(struct ether_hdr);
-    pkt->l3_len = sizeof(struct ipv4_hdr);
+    pkt->l2_len = sizeof(struct rte_ether_hdr);
+    pkt->l3_len = sizeof(struct rte_ipv4_hdr);
 }
 
 static inline void dpdk_put_tsc(struct rte_mbuf *pkt, tsc_t tsc_value)
@@ -107,19 +96,16 @@ static inline void swap_ptrs(void *p1, void *p2, void *tmp, size_t size)
     memcpy(p2, tmp, size);
 }
 
-static inline struct ether_hdr *dpdk_get_ether_hdr(struct rte_mbuf *pkt)
-{
-    return rte_pktmbuf_mtod_offset(pkt, struct ether_hdr *, OFFSET_ETHER);
+static inline struct rte_ether_hdr *dpdk_get_ether_hdr(struct rte_mbuf *pkt) {
+    return rte_pktmbuf_mtod_offset(pkt, struct rte_ether_hdr *, OFFSET_ETHER);
 }
 
-static inline struct ipv4_hdr *dpdk_get_ipv4_hdr(struct rte_mbuf *pkt)
-{
-    return rte_pktmbuf_mtod_offset(pkt, struct ipv4_hdr *, OFFSET_IPV4);
+static inline struct rte_ipv4_hdr *dpdk_get_ipv4_hdr(struct rte_mbuf *pkt) {
+    return rte_pktmbuf_mtod_offset(pkt, struct rte_ipv4_hdr *, OFFSET_IPV4);
 }
 
-static inline struct udp_hdr *dpdk_get_udp_hdr(struct rte_mbuf *pkt)
-{
-    return rte_pktmbuf_mtod_offset(pkt, struct udp_hdr *, OFFSET_UDP);
+static inline struct rte_udp_hdr *dpdk_get_udp_hdr(struct rte_mbuf *pkt) {
+    return rte_pktmbuf_mtod_offset(pkt, struct rte_udp_hdr *, OFFSET_UDP);
 }
 
 static inline byte_t *dpdk_get_payload(struct rte_mbuf *pkt)
@@ -135,7 +121,7 @@ static inline byte_t *dpdk_get_payload_offset(struct rte_mbuf *pkt, ssize_t offs
 // Swap source with destination mac addresses
 static inline void dpdk_swap_ether_addr(struct rte_mbuf *pkt)
 {
-    struct ether_hdr *ether_hdr_ptr = dpdk_get_ether_hdr(pkt);
+    struct rte_ether_hdr *ether_hdr_ptr = dpdk_get_ether_hdr(pkt);
     struct ether_addr *src_mac_ptr = &ether_hdr_ptr->s_addr;
     struct ether_addr *dst_mac_ptr = &ether_hdr_ptr->d_addr;
     struct ether_addr support;
@@ -146,7 +132,7 @@ static inline void dpdk_swap_ether_addr(struct rte_mbuf *pkt)
 // Swap source with destination ip addresses
 static inline void dpdk_swap_ipv4_addr(struct rte_mbuf *pkt)
 {
-    struct ipv4_hdr *ipv4_hdr_ptr = dpdk_get_ipv4_hdr(pkt);
+    struct rte_ipv4_hdr *ipv4_hdr_ptr = dpdk_get_ipv4_hdr(pkt);
     uint32_t *src_ip_ptr = &ipv4_hdr_ptr->src_addr;
     uint32_t *dst_ip_ptr = &ipv4_hdr_ptr->dst_addr;
     uint32_t support;
@@ -156,7 +142,7 @@ static inline void dpdk_swap_ipv4_addr(struct rte_mbuf *pkt)
 
 static inline void dpdk_swap_udp_port(struct rte_mbuf *pkt)
 {
-    struct udp_hdr *udp_hdr_ptr = dpdk_get_udp_hdr(pkt);
+    struct rte_udp_hdr *udp_hdr_ptr = dpdk_get_udp_hdr(pkt);
     uint16_t *src_port = &udp_hdr_ptr->src_port;
     uint16_t *dst_port = &udp_hdr_ptr->dst_port;
     uint16_t support;
@@ -165,8 +151,7 @@ static inline void dpdk_swap_udp_port(struct rte_mbuf *pkt)
 }
 
 // TODO: ORGANIZE THIS MESS!
-static inline void swap_ether_addr(struct ether_hdr *ether_hdr_ptr)
-{
+static inline void swap_ether_addr(struct rte_ether_hdr *ether_hdr_ptr) {
     struct ether_addr *src_mac_ptr = &ether_hdr_ptr->s_addr;
     struct ether_addr *dst_mac_ptr = &ether_hdr_ptr->d_addr;
     struct ether_addr support;
@@ -174,8 +159,7 @@ static inline void swap_ether_addr(struct ether_hdr *ether_hdr_ptr)
     swap_ptrs(src_mac_ptr, dst_mac_ptr, &support, sizeof(struct ether_addr));
 }
 
-static inline void swap_ipv4_addr(struct ipv4_hdr *ipv4_hdr_ptr)
-{
+static inline void swap_ipv4_addr(struct rte_ipv4_hdr *ipv4_hdr_ptr) {
     uint32_t *src_ip_ptr = &ipv4_hdr_ptr->src_addr;
     uint32_t *dst_ip_ptr = &ipv4_hdr_ptr->dst_addr;
     uint32_t support;
@@ -183,8 +167,7 @@ static inline void swap_ipv4_addr(struct ipv4_hdr *ipv4_hdr_ptr)
     swap_ptrs(src_ip_ptr, dst_ip_ptr, &support, sizeof(uint32_t));
 }
 
-static inline void swap_udp_port(struct udp_hdr *udp_hdr_ptr)
-{
+static inline void swap_udp_port(struct rte_udp_hdr *udp_hdr_ptr) {
     uint16_t *src_port = &udp_hdr_ptr->src_port;
     uint16_t *dst_port = &udp_hdr_ptr->dst_port;
     uint16_t support;

@@ -49,7 +49,7 @@ static inline void main_loop(struct config *conf)
     // ------------------ Infinite loop variables and body ------------------ //
 
     // Pointer to the IPv4 header in current packet (to re-calculate checksum)
-    struct ipv4_hdr *pkt_ip_hdr;
+    struct rte_ipv4_hdr *pkt_ip_hdr;
 
     size_t i;
     size_t j;
@@ -81,12 +81,12 @@ static inline void main_loop(struct config *conf)
                 }
 
                 /*
-                struct ether_hdr *eh;
+                struct rte_ether_hdr *eh;
                 byte_t *src_mac;
                 byte_t *dst_mac;
 
                 printf("MAC ADDRESSES BEFORE\n");
-                eh = dpdk_pkt_offset(pkt, struct ether_hdr *, OFFSET_ETHER);
+                eh = dpdk_pkt_offset(pkt, struct rte_ether_hdr *, OFFSET_ETHER);
                 src_mac = (byte_t*) &eh->s_addr;
                 dst_mac = (byte_t*) &eh->d_addr;
                 printf("SRC MAC: ");
@@ -110,7 +110,7 @@ static inline void main_loop(struct config *conf)
 
                 /*
                 printf("MAC ADDRESSES AFTER\n");
-                eh = dpdk_pkt_offset(pkt, struct ether_hdr *, OFFSET_ETHER);
+                eh = dpdk_pkt_offset(pkt, struct rte_ether_hdr *, OFFSET_ETHER);
                 src_mac = (byte_t*) &eh->s_addr;
                 dst_mac = (byte_t*) &eh->d_addr;
                 printf("SRC MAC: ");
@@ -126,7 +126,8 @@ static inline void main_loop(struct config *conf)
                 printf("\n");
                 */
 
-                pkt_ip_hdr = dpdk_pkt_offset(pkt, struct ipv4_hdr *, OFFSET_IPV4);
+                pkt_ip_hdr =
+                    dpdk_pkt_offset(pkt, struct rte_ipv4_hdr *, OFFSET_IPV4);
                 pkt_ip_hdr->hdr_checksum = ipv4_hdr_checksum(pkt_ip_hdr);
 
                 // Finally we put it in position j (j <= i always)

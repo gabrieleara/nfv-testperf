@@ -192,7 +192,7 @@ int addr_mac_set(struct sockaddr_ll *addr, const char *mac, const char *ifname)
     addr->sll_family = AF_PACKET;
     addr->sll_protocol = htons(ETH_P_ALL);
     addr->sll_ifindex = (ifname == NULL) ? 0 : if_nametoindex(ifname);
-    addr->sll_halen = ETHER_ADDR_LEN;
+    addr->sll_halen = RTE_ETHER_ADDR_LEN;
 
     return macaddr_parse(addr->sll_addr, mac);
 
@@ -395,7 +395,7 @@ int parameters_parse(int argc, char *argv[], struct config *conf)
     addr_mac_set(&conf->remote_addr.mac, conf->remote_mac, NULL);
     addr_mac_set(&conf->local_addr.mac, conf->local_mac, NULL);
 
-    /*    
+    /*
     for (int i = 0; i < argind; ++i)
     {
         argv[i] = argv[i+1];
@@ -437,16 +437,16 @@ int sock_set_sndbuff(int sock_fd, unsigned int size)
 
     /**
      * NOTICE: from `man 7 socket # SO_SNDBUF`:
-     * 
+     *
      * Sets or gets the maximum socket send buffer in bytes.
      * The kernel doubles this value (to allow space for bookkeeping  overhead)
      * when it is set using  setsockopt(2), and this doubled value is returned
      * by getsockopt(2).
-     * 
+     *
      * The default value is set by the /proc/sys/net/core/wmem_default file and
      * the maximum allowed value  is set by the /proc/sys/net/core/wmem_max
      * file.
-     * 
+     *
      * The minimum (doubled) value for this option is 2048.
      */
 

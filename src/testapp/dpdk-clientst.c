@@ -41,9 +41,9 @@ static inline void main_loop(struct config *conf)
     // ------------------- Variables and data structures -------------------- //
 
     // Header structures (same for each message)
-    struct ether_hdr pkt_eth_hdr;
-    struct ipv4_hdr pkt_ip_hdr;
-    struct udp_hdr pkt_udp_hdr;
+    struct rte_ether_hdr pkt_eth_hdr;
+    struct rte_ipv4_hdr pkt_ip_hdr;
+    struct rte_udp_hdr pkt_udp_hdr;
 
     // Set of messages to be send/received (actually only one)
     struct rte_mbuf *pkts_burst[1];

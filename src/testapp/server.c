@@ -120,9 +120,11 @@ static inline void main_loop(struct config *conf)
             {
                 for (i = 0; i < res; ++i)
                 {
-                    swap_ether_addr((struct ether_hdr *)(buf[i] + OFFSET_ETHER));
-                    swap_ipv4_addr((struct ipv4_hdr *)(buf[i] + OFFSET_IPV4));
-                    swap_udp_port((struct udp_hdr *)(buf[i] + OFFSET_UDP));
+                    swap_ether_addr(
+                        (struct rte_ether_hdr *)(buf[i] + OFFSET_ETHER));
+                    swap_ipv4_addr(
+                        (struct rte_ipv4_hdr *)(buf[i] + OFFSET_IPV4));
+                    swap_udp_port((struct rte_udp_hdr *)(buf[i] + OFFSET_UDP));
                 }
             }
 
@@ -141,9 +143,10 @@ static inline void main_loop(struct config *conf)
                 // If using raw sockets, swap addresses information too
                 if (conf->socktype == SOCK_RAW)
                 {
-                    swap_ether_addr((struct ether_hdr *)(pkt + OFFSET_ETHER));
-                    swap_ipv4_addr((struct ipv4_hdr *)(pkt + OFFSET_IPV4));
-                    swap_udp_port((struct udp_hdr *)(pkt + OFFSET_UDP));
+                    swap_ether_addr(
+                        (struct rte_ether_hdr *)(pkt + OFFSET_ETHER));
+                    swap_ipv4_addr((struct rte_ipv4_hdr *)(pkt + OFFSET_IPV4));
+                    swap_udp_port((struct rte_udp_hdr *)(pkt + OFFSET_UDP));
                 }
 
                 // Send it back

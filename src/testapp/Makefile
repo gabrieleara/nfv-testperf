@@ -1,7 +1,7 @@
 # variables that can be overwritten from outside
 DIR_ROOTFS	?= ~/testbed/install/rootfs
 RTE_TARGET	?= x86_64-native-linuxapp-gcc
-RTE_SDK		?= /home/gara/testbed/install/dpdk-19.05/share/dpdk
+RTE_SDK		?= $(HOME)/Documents/PhD/Projects/testbed/install/dpdk-20.02/share/dpdk
 
 # variables needed to include header files
 THIS_FILE		:= $(lastword $(MAKEFILE_LIST))
@@ -25,7 +25,7 @@ SRCS-y		+= dpdk-server.c dpdk-client.c dpdk-clientst.c dpdk-send.c dpdk-recv.c
 
 # do I need override on CFLAGS? also, change -O2 to -ggdb -O0 when debug
 CPPFLAGS	+= -iquote $(THIS_DIR)/inc
-CFLAGS		+= -Wall -Wextra -pedantic -Werror -march=native -O2 # -O0 -ggdb
+CFLAGS		+= -Wall -Wextra -pedantic -Werror -march=native -O3 # -O0 -ggdb
 #LDFLAGS		+= -pthread
 
 # dpdk external app makefile

@@ -47,9 +47,9 @@ static inline void main_loop(struct config *conf)
     // ------------------- Variables and data structures -------------------- //
 
     // Header structures, used by raw sockets only
-    struct ether_hdr pkt_eth_hdr;
-    struct ipv4_hdr pkt_ip_hdr;
-    struct udp_hdr pkt_udp_hdr;
+    struct rte_ether_hdr pkt_eth_hdr;
+    struct rte_ipv4_hdr pkt_ip_hdr;
+    struct rte_udp_hdr pkt_udp_hdr;
 
     // Data structure used to hold the frame header, used by raw sockets only
     byte_t frame_hdr[PKT_HEADER_SIZE];
@@ -83,9 +83,12 @@ static inline void main_loop(struct config *conf)
         // For RAW sockets we need to build a frame header, the same for each
         // packet
         dpdk_setup_pkt_headers(&pkt_eth_hdr, &pkt_ip_hdr, &pkt_udp_hdr, conf);
-        rte_memcpy(frame_hdr + OFFSET_ETHER, &pkt_eth_hdr, sizeof(struct ether_hdr));
-        rte_memcpy(frame_hdr + OFFSET_IPV4, &pkt_ip_hdr, sizeof(struct ipv4_hdr));
-        rte_memcpy(frame_hdr + OFFSET_UDP, &pkt_udp_hdr, sizeof(struct udp_hdr));
+        rte_memcpy(frame_hdr + OFFSET_ETHER, &pkt_eth_hdr,
+                   sizeof(struct rte_ether_hdr));
+        rte_memcpy(frame_hdr + OFFSET_IPV4, &pkt_ip_hdr,
+                   sizeof(struct rte_ipv4_hdr));
+        rte_memcpy(frame_hdr + OFFSET_UDP, &pkt_udp_hdr,
+                   sizeof(struct rte_udp_hdr));
 
         // Set the socket sending buffer size equal to the desired frame size
         // It doesn't seem to affect the system so much actually

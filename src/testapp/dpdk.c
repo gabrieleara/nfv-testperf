@@ -5,6 +5,8 @@
 
 #include "newcommon.h"
 
+#include <rte_ether.h>
+
 #define PRINT_DPDK_ERROR(str, ...) fprintf(stderr, "DPDK ERROR: " str, __VA_ARGS__)
 
 static const struct rte_eth_conf PORT_CONF_INIT = {
@@ -16,8 +18,8 @@ static const struct rte_eth_conf PORT_CONF_INIT = {
     },
 };
 
-static inline uint16_t dpdk_calc_ipv4_checksum(struct ipv4_hdr *ip_hdr)
-{
+static inline uint16_t dpdk_calc_ipv4_checksum(struct rte_ipv4_hdr *ip_hdr) {
+    /*
     uint16_t *ptr16 = (unaligned_uint16_t *)ip_hdr;
     uint32_t ip_cksum;
 
@@ -43,34 +45,40 @@ static inline uint16_t dpdk_calc_ipv4_checksum(struct ipv4_hdr *ip_hdr)
         ip_cksum = 0xFFFF;
 
     return (uint16_t)ip_cksum;
+    */
+    (void)(ip_hdr);
+    return 0;
 }
 
 // Setting up ETH, IP and UDP headers for later use
-void dpdk_setup_pkt_headers(
-    struct ether_hdr *eth_hdr,
-    struct ipv4_hdr *ip_hdr,
-    struct udp_hdr *udp_hdr,
-    struct config *conf)
-{
+void dpdk_setup_pkt_headers(struct rte_ether_hdr *eth_hdr,
+                            struct rte_ipv4_hdr *ip_hdr,
+                            struct rte_udp_hdr *rte_udp_hdr,
+                            struct config *conf) {
     uint16_t pkt_len;
-    uint16_t payload_len = (uint16_t)(conf->pkt_size - (sizeof(struct ether_hdr) +
-                                                        sizeof(struct ipv4_hdr) +
-                                                        sizeof(struct udp_hdr)));
+    uint16_t payload_len =
+        (uint16_t)(conf->pkt_size -
+                   (sizeof(struct rte_ether_hdr) + sizeof(struct rte_ipv4_hdr) +
+                    sizeof(struct rte_udp_hdr)));
 
     // Initialize ETH header
-    ether_addr_copy((struct ether_addr *)conf->local_addr.mac.sll_addr, &eth_hdr->s_addr);
-    ether_addr_copy((struct ether_addr *)conf->remote_addr.mac.sll_addr, &eth_hdr->d_addr);
-    eth_hdr->ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
+    /*
+    rte_ether_addr_copy((struct ether_addr *)conf->local_addr.mac.sll_addr,
+                        &eth_hdr->s_addr);
+    rte_ether_addr_copy((struct ether_addr *)conf->remote_addr.mac.sll_addr,
+                        &eth_hdr->d_addr);
+    */
+    eth_hdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 
     // Initialize UDP header
-    pkt_len = (uint16_t)(payload_len + sizeof(struct udp_hdr));
-    udp_hdr->src_port = rte_cpu_to_be_16(conf->local_port);
-    udp_hdr->dst_port = rte_cpu_to_be_16(conf->remote_port);
-    udp_hdr->dgram_len = rte_cpu_to_be_16(pkt_len);
-    udp_hdr->dgram_cksum = 0; /* No UDP checksum. */
+    pkt_len = (uint16_t)(payload_len + sizeof(struct rte_udp_hdr));
+    rte_udp_hdr->src_port = rte_cpu_to_be_16(conf->local_port);
+    rte_udp_hdr->dst_port = rte_cpu_to_be_16(conf->remote_port);
+    rte_udp_hdr->dgram_len = rte_cpu_to_be_16(pkt_len);
+    rte_udp_hdr->dgram_cksum = 0; /* No UDP checksum. */
 
     // Initialize IP header
-    pkt_len = (uint16_t)(pkt_len + sizeof(struct ipv4_hdr));
+    pkt_len = (uint16_t)(pkt_len + sizeof(struct rte_ipv4_hdr));
     ip_hdr->version_ihl = IP_VERSION_HDRLEN;
     ip_hdr->type_of_service = 0;
     ip_hdr->fragment_offset = 0;
@@ -258,9 +266,9 @@ int dpdk_init(int argc, char *argv[], struct config *conf)
 int dpdk_advertise_host_mac(struct config *conf)
 {
     // Header structures
-    struct ether_hdr pkt_eth_hdr;
-    struct ipv4_hdr pkt_ip_hdr;
-    struct udp_hdr pkt_udp_hdr;
+    struct rte_ether_hdr pkt_eth_hdr;
+    struct rte_ipv4_hdr pkt_ip_hdr;
+    struct rte_udp_hdr pkt_udp_hdr;
 
     // The message to be sent
     struct rte_mbuf *pkts_burst[1];
