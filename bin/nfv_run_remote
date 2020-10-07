@@ -1,0 +1,69 @@
+#!/bin/bash
+
+set -e
+
+################################################################################
+#                               VARIABLES
+################################################################################
+
+##TODO: READ THESE VALUES FROM A FILE
+remote="remote"                    # -H
+confpath="confrc_remote.bash"      # -f
+remote_confpath="/tmp/confrc.bash" # leave default
+remote_outdir="/tmp/tmpout"        # leave default
+outdir="out/remote"                # -o
+cmddir=""                          # -C
+# By default, cmddir is empty, meaning that the command on the second machine
+# can be found in PATH
+
+################################################################################
+#                               MAIN FLOW
+################################################################################
+
+while getopts ":d:t:f:o:v:r:b:p:H:C:chTDBRS:" opt; do
+    case ${opt} in
+    d) ;;
+    o) outdir=$OPTARG ;;
+    r) ;;
+    b) ;;
+    p) ;;
+    v) ;;
+    t) ;;
+    c) ;;
+    T) ;;
+    D) ;;
+    R) ;;
+    B) ;;
+    H) remote=$OPTARG ;;
+    f) confpath=$OPTARG ;;
+    C) cmddir=$OPTARG ;;
+    S) ;;
+    h)
+        print_help
+        exit 0
+        ;;
+    \?)
+        echo "Invalid option: -$OPTARG"
+        exit 1
+        ;;
+    :)
+        echo "Invalid option: -$OPTARG ($(tolongopt "-$OPTARG")) requires an argument"
+        exit 1
+        ;;
+    esac
+done
+
+if [ -n "$cmddir" ]; then
+    cmddir="$cmddir/"
+fi
+
+command="${cmddir}nfv_run_local $* -f \"$remote_confpath\" -o \"$remote_outdir\""
+
+outdir="$outdir/remote"
+
+rm -rf "$outdir" 2>/dev/null
+ssh "$remote" "rm -rf \"${remote_outdir}\" 2>/dev/null"
+scp "$confpath" "${remote}:${remote_confpath}"
+ssh "$remote" "$command"
+mkdir -p "${outdir}"
+scp -rp "$remote:${remote_outdir}/*" "${outdir}"

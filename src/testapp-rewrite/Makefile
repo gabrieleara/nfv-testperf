@@ -44,9 +44,9 @@ print_vars:
 	@$(CXX) $(CFLAGS) $(CXXFLAGS) -c -o $@ $<
 
 # rewriting installation rule to copy target in container
-# install: build _postinstall __postinstall
-# __postinstall: build _postinstall
-# 	cp -T $(THIS_DIR)/build/$(APP) $(DIR_ROOTFS)/$(APP)
+install: build _postinstall __postinstall
+__postinstall: build _postinstall
+	cp -T $(THIS_DIR)/build/$(APP) $(DIR_ROOTFS)/$(APP)
 
 # used to list all targets in current makefile, since many are inherited
 # .PHONY: list
