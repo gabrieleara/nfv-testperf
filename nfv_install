@@ -893,7 +893,7 @@ function main_f() {
     DIR_CONFIGRC=$DIR_CONFIG/rc
     NFV_RCFILE=$DIR_BASE/.rcfile
 
-    DIR_BUILDCORE=$DIR_SRC/buildccore
+    DIR_BUILDCORE=$DIR_SRC/buildcore
     DIR_BUILDCORE_BUILD=$DIR_BUILD/buildcore
     DIR_ROOTFS=$DIR_INSTALL/rootfs
 
