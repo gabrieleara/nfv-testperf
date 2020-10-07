@@ -13,7 +13,7 @@ set -e
 #         close correctly vhost instances
 function wait_screen() {
 
-    if [ $# -ge 2 ] ; then
+    if [ $# -ge 2 ]; then
         max_time=$2
     else
         max_time=15
@@ -22,12 +22,12 @@ function wait_screen() {
     start_time=$(date -u +%s)
 
     end_time=$(date -u +%s)
-    elapsed=$(($end_time-$start_time))
+    elapsed=$((end_time - start_time))
 
-    while (screen -list | grep -q $1) && test $elapsed -le $max_time ; do
+    while (screen -list | grep -q "$1") && test $elapsed -le $max_time; do
         sleep 1
         end_time=$(date -u +%s)
-        elapsed=$(($end_time-$start_time))
+        elapsed=$((end_time - start_time))
     done
 }
 
@@ -35,12 +35,10 @@ function wait_screen() {
 function vpp_create_vhost() {
     sleep 1
 
-    for i in "${!LXC_CONT_NAMES[@]}" ; do
-        sudo vppctl create vhost-user socket /tmp/VIO/${LXC_CONT_SOCKS[i]} server   &>/dev/null && \
-        sudo vppctl set interface state VirtualEthernet0/0/$i up                    &>/dev/null && \
-        sudo vppctl set interface l2 bridge VirtualEthernet0/0/$i 1                 &>/dev/null
-
-        if [ $? -ne 0 ] ; then
+    for i in "${!LXC_CONT_NAMES[@]}"; do
+        if sudo vppctl create vhost-user socket "/tmp/VIO/${LXC_CONT_SOCKS[i]}" server &>/dev/null &&
+            sudo vppctl set interface state "VirtualEthernet0/0/$i" up &>/dev/null &&
+            sudo vppctl set interface l2 bridge "VirtualEthernet0/0/$i" 1 &>/dev/null; then
             echo 1
             return
         fi
@@ -62,14 +60,13 @@ function vpp_create_vhost() {
     # fi
 }
 
-
 function linesep() {
     printf '=%.0s' {1..80}
     printf '\n'
 }
 
 function isnumber() {
-    if [[ "$1" =~ ^[0-9]+$ ]] ; then
+    if [[ "$1" =~ ^[0-9]+$ ]]; then
         echo 1
     else
         echo 0
@@ -77,7 +74,7 @@ function isnumber() {
 }
 
 function contains() {
-    if  [[ $1 =~ (^|[[:space:]])$2($|[[:space:]]) ]] ; then
+    if [[ $1 =~ (^|[[:space:]])$2($|[[:space:]]) ]]; then
         echo 1
     else
         echo 0
@@ -112,13 +109,18 @@ function contains() {
 #     esac
 # }
 
-pnoargformat="%-19s %s\n\n"
-pargformat="%-19s %s\n                    %s\n\n"
+function printnoarg() {
+    printf '%-19s %s\n\n' "$@"
+}
+
+function printwarg() {
+    printf '%-19s %s\n                    %s\n\n' "$@"
+}
 
 function print_help() {
     cmd=$0
-    if [ $cmd = "bash" ] ; then
-        cmd="$0 $BASH_SOURCE"
+    if [ "$cmd" = "bash" ]; then
+        cmd="${BASH_SOURCE[0]}"
     fi
 
     printf "%s\n" \
@@ -131,49 +133,37 @@ function print_help() {
         "Arguments [*=default]:" \
         ""
 
-    printf "$pnoargformat" \
-        "-h, --help" "Print this message" \
+    printnoarg "-h, --help" "Print this message"
 
-    printf "$pargformat" \
-        "-d, --dimension" "[throughput*|latency|latencyst]" \
+    printwarg "-d, --dimension" "[throughput*|latency|latencyst]" \
         "The dimension that shall be tested for"
 
-    printf "$pargformat" \
-        "-t, --timeout" "<number>[=$default_timeout]" \
+    printwarg "-t, --timeout" "<number>[=$default_timeout]" \
         "The number of seconds the test should last for"
 
-    printf "$pargformat" \
-        "-f, --conf-filename" "<path>[=$default_filename]" \
+    printwarg "-f, --conf-filename" "<path>[=$default_filename]" \
         "The file in which configuration for local containers and applications to be started are kept"
 
-    printf "$pargformat" \
-        "-o, --out-dir" "<path>[=out]" \
+    printwarg "-o, --out-dir" "<path>[=out]" \
         "The directory in which results should be written"
 
-    printf "$pargformat" \
-        "-v, --vswitch" "[pmd*|vpp|ovs|basicfwd|snabb|sriov|linux-bridge]" \
+    printwarg "-v, --vswitch" "[pmd*|vpp|ovs|basicfwd|snabb|sriov|linux-bridge]" \
         "The virtual switch used to exchange packets"
 
-    printf "$pargformat" \
-        "-r, --rate" "<number>[=$default_rate]" \
+    printwarg "-r, --rate" "<number>[=$default_rate]" \
         "The number of packets per seconds that should be sent"
 
-    printf "$pargformat" \
-        "-b, --burst-size" "<number>[=$default_bst_size]" \
+    printwarg "-b, --burst-size" "<number>[=$default_bst_size]" \
         "The number of packets that should be grouped in a single burst"
 
-    printf "$pargformat" \
-        "-p, --pkt-size" "<number>[=$default_pkt_size]" \
+    printwarg "-p, --pkt-size" "<number>[=$default_pkt_size]" \
         "The size of each packet in bytes"
 
-    printf "$pnoargformat" \
-        "-c, --consume-data" "Use this to touch all bytes sent in a packet each time is produced/received"
+    printnoarg "-c, --consume-data" "Use this to touch all bytes sent in a packet each time is produced/received"
 
-    printf "$pnoargformat" \
-        "-T, --test-param" "Use this to test only if parameters provided are correct"
+    printnoarg "-T, --test-param" "Use this to test only if parameters provided are correct"
 
-    printf "$pnoargformat" \
-        "-D, --debug" "Print more info/more frequently for debug purposes"
+    printnoarg "-D, --debug" "Print more info/more frequently for debug purposes"
 
     printf "%s\n" \
         "NOTICE: DO NOT SOURCE THIS FILE, IT USES exit COMMAND TO RETURN A VALUE TO COMMAND LINE" \
@@ -182,74 +172,74 @@ function print_help() {
 
 function toshortopt() {
     case $1 in
-    --help)             echo "-h"   ;;
-    --dimension)        echo "-d"   ;;
-    --timeout)          echo "-t"   ;;
-    --conf-filename)    echo "-f"   ;;
-    --out-dir)          echo "-o"   ;;
-    --vswitch)          echo "-v"   ;;
-    --rate)             echo "-r"   ;;
-    --burst-size)       echo "-b"   ;;
-    --pkt-size)         echo "-p"   ;;
-    --consume-data)     echo "-c"   ;;
-    --test-param)       echo "-T"   ;;
-    --debug)            echo "-D"   ;;
-    --use-raw-sock)     echo "-R"   ;;
-    --use-block-sock)   echo "-B"   ;;
-    --remote-hostname)  echo "-H"   ;;
-    --remote-cmddir)    echo "-C"   ;;
-    --schedule)         echo "-S"   ;;
-    --use-multi)        echo "-m"   ;;
-    *)                  echo "$1"   ;;
+    --help) echo "-h" ;;
+    --dimension) echo "-d" ;;
+    --timeout) echo "-t" ;;
+    --conf-filename) echo "-f" ;;
+    --out-dir) echo "-o" ;;
+    --vswitch) echo "-v" ;;
+    --rate) echo "-r" ;;
+    --burst-size) echo "-b" ;;
+    --pkt-size) echo "-p" ;;
+    --consume-data) echo "-c" ;;
+    --test-param) echo "-T" ;;
+    --debug) echo "-D" ;;
+    --use-raw-sock) echo "-R" ;;
+    --use-block-sock) echo "-B" ;;
+    --remote-hostname) echo "-H" ;;
+    --remote-cmddir) echo "-C" ;;
+    --schedule) echo "-S" ;;
+    --use-multi) echo "-m" ;;
+    *) echo "$1" ;;
     esac
 }
 
 function tolongopt() {
     case $1 in
-    -h) echo "--help"           ;;
-    -d) echo "--dimension"      ;;
-    -t) echo "--timeout"        ;;
-    -f) echo "--conf-filename"  ;;
-    -o) echo "--out-dir"        ;;
-    -v) echo "--vswitch"        ;;
-    -r) echo "--rate"           ;;
-    -b) echo "--burst-size"     ;;
-    -p) echo "--pkt-size"       ;;
-    -c) echo "--consume-data"   ;;
-    -T) echo "--test-param"     ;;
-    -D) echo "--debug"          ;;
-    -R) echo "--use-raw-sock"   ;;
+    -h) echo "--help" ;;
+    -d) echo "--dimension" ;;
+    -t) echo "--timeout" ;;
+    -f) echo "--conf-filename" ;;
+    -o) echo "--out-dir" ;;
+    -v) echo "--vswitch" ;;
+    -r) echo "--rate" ;;
+    -b) echo "--burst-size" ;;
+    -p) echo "--pkt-size" ;;
+    -c) echo "--consume-data" ;;
+    -T) echo "--test-param" ;;
+    -D) echo "--debug" ;;
+    -R) echo "--use-raw-sock" ;;
     -B) echo "--use-block-sock" ;;
-    -H) echo "--remote-hostname";;
-    -C) echo "--remote-cmddir"  ;;
-    -S) echo "--schedule"       ;;
-    -m) echo "--use-multi"      ;;
-    *)  echo "$1"               ;;
+    -H) echo "--remote-hostname" ;;
+    -C) echo "--remote-cmddir" ;;
+    -S) echo "--schedule" ;;
+    -m) echo "--use-multi" ;;
+    *) echo "$1" ;;
     esac
 }
 
 function print_configuration() {
     confformat="%29s    %-10s %s\n"
 
-    if [ "$consume_data" = "1" ] ; then
+    if [ "$consume_data" = "1" ]; then
         will_consume=true
     else
         will_consume=false
     fi
 
-    if [ "$debug" = "1" ] ; then
+    if [ "$debug" = "1" ]; then
         will_debug=true
     else
         will_debug=false
     fi
 
-    if [ "$raw_sock" = "1" ] ; then
+    if [ "$raw_sock" = "1" ]; then
         will_raw=true
     else
         will_raw=false
     fi
 
-    if [ "$multi_api" = "1" ] ; then
+    if [ "$multi_api" = "1" ]; then
         will_mmsg=true
     else
         will_mmsg=false
@@ -257,17 +247,17 @@ function print_configuration() {
 
     linesep
     printf "SINGLE TEST CONFIGURATION:\n"
-    printf "$confformat" "Test dimension"   "$dimension"
+    printf "$confformat" "Test dimension" "$dimension"
     printf "$confformat" "Output directory" "$outdir"
-    printf "$confformat" "vSwitch used"     "$vswitch"
-    printf "$confformat" "Timeout"          "$timeout"  "s"
-    printf "$confformat" "Rate"             "$rate"     "pps"
-    printf "$confformat" "Burst size"       "$bst_size" "packets"
-    printf "$confformat" "Packet size"      "$pkt_size" "bytes"
+    printf "$confformat" "vSwitch used" "$vswitch"
+    printf "$confformat" "Timeout" "$timeout" "s"
+    printf "$confformat" "Rate" "$rate" "pps"
+    printf "$confformat" "Burst size" "$bst_size" "packets"
+    printf "$confformat" "Packet size" "$pkt_size" "bytes"
     printf "$confformat" "Debug info will be printed" "$will_debug"
     printf "$confformat" "Each byte will be touched" "$will_consume"
     printf "$confformat" "Using raw sockets" "$will_raw"
-    printf "$confformat" "Using mmsg API"   "$will_mmsg"
+    printf "$confformat" "Using mmsg API" "$will_mmsg"
     linesep
 }
 
@@ -278,75 +268,74 @@ function print_configuration() {
 function parse_parameters() {
     # First convert them to short parameters,
     # so we can use getopts instead of getopt
-    for arg in "$@" ; do
+    for arg in "$@"; do
         shift
-        set -- "$@" "`toshortopt "$arg"`"
+        set -- "$@" "$(toshortopt "$arg")"
     done
 
     # Then use getopts in a loop with short options only
     OPTIND=1
-    while getopts ":d:t:f:o:v:r:b:p:H:C:chTDBRmS:" opt ;
-    do
+    while getopts ":d:t:f:o:v:r:b:p:H:C:chTDBRmS:" opt; do
         case ${opt} in
-        d)  dimension=$OPTARG           ;;
-        o)  outdir=$OPTARG              ;;
-        r)  rate=$OPTARG                ;;
-        b)  bst_size=$OPTARG            ;;
-        p)  pkt_size=$OPTARG            ;;
-        v)  vswitch=$OPTARG             ;;
-        t)  timeout=$OPTARG             ;;
-        f)  filename=$OPTARG            ;;
-        c)  consume_data=1              ;;
-        T)  test_params=1               ;;
-        D)  debug=1                     ;;
-        R)  raw_sock=1                  ;;
-        B)  block_sock=1                ;;
-        H)  ;; # ignore, option for run_remote_test script
-        C)  ;; # ignore, option for run_remote_test script
-        S)  schedule=$OPTARG            ;;
-        m)  multi_api=1                 ;;
-        help|h )
+        d) dimension=$OPTARG ;;
+        o) outdir=$OPTARG ;;
+        r) rate=$OPTARG ;;
+        b) bst_size=$OPTARG ;;
+        p) pkt_size=$OPTARG ;;
+        v) vswitch=$OPTARG ;;
+        t) timeout=$OPTARG ;;
+        f) filename=$OPTARG ;;
+        c) consume_data=1 ;;
+        T) test_params=1 ;;
+        D) debug=1 ;;
+        R) raw_sock=1 ;;
+        B) block_sock=1 ;;
+        H) ;; # ignore, option for run_remote_test script
+        C) ;; # ignore, option for run_remote_test script
+        S) schedule=$OPTARG ;;
+        m) multi_api=1 ;;
+        h)
             print_help
             exit 0
             ;;
-        \? )
+        \?)
             echo "Invalid option: -$OPTARG"
             exit 1
             ;;
-        : )
-            echo "Invalid option: -$OPTARG (`tolongopt -$OPTARG`) requires an argument"
+        :)
+            echo "Invalid option: -$OPTARG ($(tolongopt "-$OPTARG")) requires an argument"
             exit 1
             ;;
         esac
     done
-    shift $((OPTIND -1))
+    shift $((OPTIND - 1))
     OPTIND=1
 }
 
 function check_parameters() {
-    if [ "`contains \"$dimension_list\" \"$dimension\"`" = "0" ] ; then
+    if [ "$(contains "$dimension_list" "$dimension")" = "0" ]; then
         echo "Invalid test dimension selection \"$dimension\", select one from the following list:"
         echo -e "\t$dimension_list"
         exit 1
     fi
 
-    if [ "`contains \"$vswitch_list\" \"$vswitch\"`" = "0" ] ; then
+    if [ "$(contains "$vswitch_list" "$vswitch")" = "0" ]; then
         echo "Invalid virtual switch selection \"$vswitch\", select one from the following list:"
         echo -e "\t$vswitch_list"
         exit 1
     fi
 
-    if [ "`isnumber $rate`" = "0" ] ; then
+    if [ "$(isnumber "$rate")" = "0" ]; then
         echo "Invalid parameter rate \"$rate\", must be an integer number."
         exit 1
     fi
 
-    if [ "`isnumber $pkt_size`" = "0" ] ; then
+    if [ "$(isnumber "$pkt_size")" = "0" ]; then
         echo "Invalid parameter packet size \"$pkt_size\", must be an integer number."
         exit 1
     fi
 
-    if [ "`isnumber $bst_size`" = "0" ] ; then
+    if [ "$(isnumber "$bst_size")" = "0" ]; then
         echo "Invalid parameter burst size \"$bst_size\", must be an integer number."
         exit 1
     fi
@@ -354,14 +343,14 @@ function check_parameters() {
     # TODO: test timeout
 }
 
-function silent_mode_opt {
-    if [ ! $debug = 1 ] ; then
+function silent_mode_opt() {
+    if [ ! $debug = 1 ]; then
         echo "-s"
     fi
 }
 
-function log_vswitch_option {
-    if [ $debug = 1 ] ; then
+function log_vswitch_option() {
+    if [ $debug = 1 ]; then
         echo "-L" "-Logfile" "$outdir/vswitch.log"
     fi
 }
@@ -378,7 +367,7 @@ function start_vswitch() {
         done
         pmd_cmd="$pmd_cmd --no-pci -- --auto-start"
 
-        screen -d -S screen_vswitch `log_vswitch_option` -m $pmd_cmd
+        screen -d -S screen_vswitch $(log_vswitch_option) -m $pmd_cmd
 
         # screen -d -S screen_vswitch `log_vswitch_option` -m \
         #     sudo $PMD -l $SWITCH_CPUS -n 2 --socket-mem 1024,1024 \
@@ -393,7 +382,7 @@ function start_vswitch() {
         done
         pmd_cmd="$pmd_cmd --no-pci -- --auto-start"
 
-        screen -d -S screen_vswitch `log_vswitch_option` -m $pmd_cmd
+        screen -d -S screen_vswitch $(log_vswitch_option) -m $pmd_cmd
 
         # screen -d -S screen_vswitch `log_vswitch_option` -m \
         # sudo $BASICFWD -l $SWITCH_CPUS -n 2 --socket-mem 1024,1024 \
@@ -403,11 +392,11 @@ function start_vswitch() {
         ;;
     vpp)
         # Bind SR-IOV port to right driver
-        $SCRIPT_DIR/sriov_tools.bash $filename -b igb_uio
+        "$SCRIPT_DIR/nfv_sriov_tools" "$filename" -b igb_uio
 
         # This command should be executed from fdio directory
         #pushd $FDIO_DIR > /dev/null
-        screen -d -S screen_vswitch `log_vswitch_option` -m \
+        screen -d -S screen_vswitch $(log_vswitch_option) -m \
             sudo vpp -c ~/testbed/conf/vpp.conf
         #popd > /dev/null
 
@@ -424,12 +413,12 @@ function start_vswitch() {
 
         res=$(vpp_create_vhost)
 
-        while [ $res -ne 0 ] ; do
+        while [ "$res" -ne 0 ]; do
             res=$(vpp_create_vhost)
         done
 
-        sudo vppctl set interface state TenGigabitEthernet4/0/0 up && \
-        sudo vppctl set interface l2 bridge TenGigabitEthernet4/0/0 1
+        sudo vppctl set interface state TenGigabitEthernet4/0/0 up &&
+            sudo vppctl set interface l2 bridge TenGigabitEthernet4/0/0 1
 
         # TODO: add the external port
 
@@ -438,7 +427,7 @@ function start_vswitch() {
         # OVS does not print anything on command line, so we do not need a
         # separate terminal to run it
         sudo mount --bind /usr/local/var/run/openvswitch /tmp/VIO
-        sudo $OVS_DIR/ovs-ctl start
+        sudo "$OVS_DIR/ovs-ctl" start
 
         # Open vSwitch DPDK options [DPDK can run only on core 0 and 2]
         #FIXME: memory requirements
@@ -450,8 +439,8 @@ function start_vswitch() {
         sudo ovs-vsctl --no-wait set Open_vSwitch . other_config:pmd-cpu-mask=0x5
 
         # Drop configuration for any existing OVS bridge
-        for bridge in `sudo ovs-vsctl list-br`; do
-            sudo ovs-vsctl del-br $bridge
+        for bridge in $(sudo ovs-vsctl list-br); do
+            sudo ovs-vsctl del-br "$bridge"
         done
 
         # Now let's create a new bridge
@@ -464,16 +453,17 @@ function start_vswitch() {
         sudo ovs-ofctl del-flows dpdk-ovs-br0
 
         # Bind SR-IOV port to right driver
-        $SCRIPT_DIR/sriov_tools.bash $filename -b igb_uio
+        "$SCRIPT_DIR/nfv_sriov_tools" "$filename" -b igb_uio
 
         # Add the sriov port to OVS
         sudo ovs-vsctl add-port dpdk-ovs-br0 sriov_dev \
             -- set Interface sriov_dev type=dpdk options:dpdk-devargs=0000:04:00.0
 
         # Add one dpdkvhostuser port per local VM
-        for i in "${!LXC_CONT_NAMES[@]}" ; do
-            sudo ovs-vsctl add-port dpdk-ovs-br0 ${LXC_CONT_SOCKS[i]} \
-                -- set Interface ${LXC_CONT_SOCKS[i]} type=dpdkvhostuser ofport_request=$((i+1))
+        for i in "${!LXC_CONT_NAMES[@]}"; do
+            sudo ovs-vsctl add-port dpdk-ovs-br0 "${LXC_CONT_SOCKS[i]}" \
+                -- set Interface "${LXC_CONT_SOCKS[i]}" \
+                type=dpdkvhostuser ofport_request=$((i + 1))
         done
 
         # TODO: add the external port
@@ -516,29 +506,30 @@ function start_vswitch() {
         num_local_ports="${#LXC_CONT_NAMES[@]}"
 
         snabb_cmd="taskset -c $SWITCH_CPUS sudo $SNABB $num_local_ports"
-        for i in "${!LXC_CONT_NAMES[@]}" ; do
+        for i in "${!LXC_CONT_NAMES[@]}"; do
             snabb_cmd="$snabb_cmd /tmp/VIO/${LXC_CONT_SOCKS[i]}"
         done
         # TODO: add the external port
 
-        screen -d -S screen_vswitch `log_vswitch_option` -m $snabb_cmd
+        screen -d -S screen_vswitch $(log_vswitch_option) -m $snabb_cmd
 
         ;;
     sriov)
         # TODO: SCALE SR-IOV
+        # FIXME: File in script dir? Hell no
         # Binds SR-IOV devices to DPDK driver and resets them, takes a while
-        $SCRIPT_DIR/sriov_tools.bash $filename -b igb_uio
+        "$SCRIPT_DIR/nfv_sriov_tools" "$filename" -b igb_uio
 
-        sudo rm $SCRIPT_DIR/sriov.conf 2>/dev/null || true
+        sudo rm "$SCRIPT_DIR/sriov.conf" 2>/dev/null || true
         for i in "${!LXC_CONT_NAMES[@]}"; do
-            echo "set vf mac addr 0 $i ${LXC_CONT_MACS[i]}" >> $SCRIPT_DIR/sriov.conf
+            echo "set vf mac addr 0 $i ${LXC_CONT_MACS[i]}" >>"$SCRIPT_DIR/sriov.conf"
         done
-        echo "" >> $SCRIPT_DIR/sriov.conf
+        echo "" >>"$SCRIPT_DIR/sriov.conf"
 
         # Start PF handler for PF0
-        screen -d -S screen_vswitch `log_vswitch_option` -m \
-            sudo $PMD -l $SWITCH_CPUS -n 2 --socket-mem 1024,0 --file-prefix=host \
-            -w 04:00.0 -- --cmdline-file=$SCRIPT_DIR/sriov.conf
+        screen -d -S screen_vswitch $(log_vswitch_option) -m \
+            sudo "$PMD" -l "$SWITCH_CPUS" -n 2 --socket-mem 1024,0 --file-prefix=host \
+            -w 04:00.0 -- --cmdline-file="$SCRIPT_DIR/sriov.conf"
 
         # Some sleep needed, mabe not 80s, but better safe than sorry
         sleep 80s
@@ -583,15 +574,15 @@ function stop_vswitch() {
         wait_screen screen_vswitch
 
         # Binds SR-IOV devices to no driver and resets them, takes a while
-        $SCRIPT_DIR/sriov_tools.bash $filename -u
+        "$SCRIPT_DIR/nfv_sriov_tools" "$filename" -u
         ;;
     ovs)
         # Simply stop it
-        sudo $OVS_DIR/ovs-ctl stop
+        sudo "$OVS_DIR/ovs-ctl" stop
         sudo umount /tmp/VIO
 
         # Binds SR-IOV devices to no driver and resets them, takes a while
-        $SCRIPT_DIR/sriov_tools.bash $filename -u
+        "$SCRIPT_DIR/nfv_sriov_tools" "$filename" -u
         ;;
     snabb)
         # Signal it to stop with Ctrl+C
@@ -611,7 +602,7 @@ function stop_vswitch() {
         wait_screen screen_vswitch
 
         # Binds SR-IOV devices to no driver and resets them, takes a while
-        $SCRIPT_DIR/sriov_tools.bash $filename -u
+        "$SCRIPT_DIR/nfv_sriov_tools" "$filename" -u
         ;;
     linux-bridge)
         # This is not an actual switch, it is just used to start tests using normal kernel sockets
@@ -625,31 +616,31 @@ function stop_vswitch() {
 }
 
 function raw_mode_opt() {
-    if [ $raw_sock == 1 ] ; then
+    if [ $raw_sock == 1 ]; then
         echo "-R eth0"
     fi
 }
 
 function noblock_mode_opt() {
-    if [ $block_sock == 1 ] ; then
+    if [ $block_sock == 1 ]; then
         echo "-B"
     fi
 }
 
 function multi_msg_opt() {
-    if [ $multi_api == 1 ] ; then
+    if [ $multi_api == 1 ]; then
         echo "-m"
     fi
 }
 
 function vswitch_cmdline_option() {
     case $vswitch in
-    linux-bridge*)
-        ;;
-    sriov )
+    linux-bridge*) ;;
+
+    sriov)
         echo "-s"
         ;;
-    * )
+    *)
         # Use simple DPDK
         echo "-d"
         ;;
@@ -657,7 +648,7 @@ function vswitch_cmdline_option() {
 }
 
 function consume_data_option() {
-    if [ "$consume_data" = "1" ] ; then
+    if [ "$consume_data" = "1" ]; then
         echo "-c"
     fi
 }
@@ -668,18 +659,18 @@ function consume_data_option() {
 # NOTICE: -s option enables silent mode for any application
 function fill_commands() {
     for i in "${!LXC_CONT_NAMES[@]}"; do
-        COMMANDS[$i]="/test.sh -m ${LXC_CONT_NAMES[i]} `vswitch_cmdline_option` ${LXC_CONT_CMDNAMES[i]} -- ${LXC_CONT_IPS[i]} ${LXC_CONT_MACS[i]} ${LXC_CONT_OTHER_IPS[i]} ${LXC_CONT_OTHER_MACS[i]} `silent_mode_opt` `raw_mode_opt` `noblock_mode_opt` `multi_msg_opt` -r $rate -b $bst_size -p $pkt_size `consume_data_option`"
+        COMMANDS[$i]="/nfv_run_in_container -m ${LXC_CONT_NAMES[i]} $(vswitch_cmdline_option) ${LXC_CONT_CMDNAMES[i]} -- ${LXC_CONT_IPS[i]} ${LXC_CONT_MACS[i]} ${LXC_CONT_OTHER_IPS[i]} ${LXC_CONT_OTHER_MACS[i]} $(silent_mode_opt) $(raw_mode_opt) $(noblock_mode_opt) $(multi_msg_opt) -r $rate -b $bst_size -p $pkt_size $(consume_data_option)"
     done
 }
 
 function load_conf_file() {
-    source $filename
+    source "$filename"
     fill_commands
 }
 
 # function build_commands() {
-#     command_cont_a="/test.sh -m $CONT_A"
-#     command_cont_b="/test.sh -m $CONT_B"
+#     command_cont_a="/nfv_run_in_container -m $CONT_A"
+#     command_cont_b="/nfv_run_in_container -m $CONT_B"
 #     case $vswitch in
 #     linux-bridge*)
 #         ;;
@@ -715,24 +706,24 @@ function prepare_system_resources() {
     sudo umount /tmp/VIO 2>/dev/null || true
     sudo rm /tmp/VIO/sock* 2>/dev/null || true
     sudo modprobe uio || true
-    sudo insmod $HOME/testbed/install/dpdk-19.05/lib/modules/`uname -r`/extra/dpdk/igb_uio.ko 2>/dev/null || true
+    sudo insmod "$HOME/testbed/install/dpdk-19.05/lib/modules/$(uname -r)/extra/dpdk/igb_uio.ko" 2>/dev/null || true
     # TODO: add insmod to sriov_tools
 
     # Set processor to high performance, disable turbo boost
-    for CPU_FREQ_GOVERNOR in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor;
-    do [ -f $CPU_FREQ_GOVERNOR ] || continue;
-        sudo echo -n performance | sudo tee $CPU_FREQ_GOVERNOR > /dev/null;
+    for CPU_FREQ_GOVERNOR in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+        [ -f "$CPU_FREQ_GOVERNOR" ] || continue
+        sudo echo -n performance | sudo tee "$CPU_FREQ_GOVERNOR" >/dev/null
     done
-    echo 1 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
+    echo 1 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo >/dev/null
 }
 
 function prepare_outdir() {
-    mkdir -p $outdir
+    mkdir -p "$outdir"
 
-    rm $outdir/vswitch.log 2>/dev/null || true
+    rm -f "$outdir/vswitch.log" 2>/dev/null
 
     for i in "${!LXC_CONT_NAMES[@]}"; do
-        rm $outdir/${LXC_CONT_NAMES[i]}_${LXC_CONT_CMDNAMES[i]}.log 2>/dev/null || true
+        rm -f "$outdir/${LXC_CONT_NAMES[i]}_${LXC_CONT_CMDNAMES[i]}.log" 2>/dev/null
     done
 
     # rm $outdir/${CONT_A}_`get_command_name_cont_a`.log 2>/dev/null || true
@@ -746,11 +737,11 @@ function start_applications() {
 
     for i in "${!LXC_CONT_NAMES[@]}"; do
         # Start Container
-        sudo lxc-start -n ${LXC_CONT_NAMES[i]}
+        sudo lxc-start -n "${LXC_CONT_NAMES[i]}"
 
         # Launch application inside container
-        screen -d -S screen_${LXC_CONT_NAMES[i]} -L -Logfile ${outdir}/${LXC_CONT_NAMES[i]}_${LXC_CONT_CMDNAMES[i]}.log -m \
-            sudo lxc-attach -n ${LXC_CONT_NAMES[i]} -- \
+        screen -d -S "screen_${LXC_CONT_NAMES[i]}" -L -Logfile "${outdir}/${LXC_CONT_NAMES[i]}_${LXC_CONT_CMDNAMES[i]}.log" -m \
+            sudo lxc-attach -n "${LXC_CONT_NAMES[i]}" -- \
             ${COMMANDS[i]}
     done
 
@@ -774,17 +765,17 @@ function stop_applications() {
 
     # Send Ctrl-C to each application in containers
     for i in "${!LXC_CONT_NAMES[@]}"; do
-        screen -S screen_${LXC_CONT_NAMES[i]} -p 0 -X stuff "^C" &>/dev/null || true
+        screen -S "screen_${LXC_CONT_NAMES[i]}" -p 0 -X stuff "^C" &>/dev/null || true
     done
 
     # Wait for each container to terminate execution (up to a certain timeout)
     for i in "${!LXC_CONT_NAMES[@]}"; do
-        wait_screen screen_${LXC_CONT_NAMES[i]}
+        wait_screen screen_"${LXC_CONT_NAMES[i]}"
     done
 
     # Stop containers
     for i in "${!LXC_CONT_NAMES[@]}"; do
-        sudo lxc-stop -n ${LXC_CONT_NAMES[i]}
+        sudo lxc-stop -n "${LXC_CONT_NAMES[i]}"
     done
 
     # screen -S screen_cont_a -p 0 -X stuff "^C" &>/dev/null || true
@@ -801,28 +792,33 @@ function stop_applications() {
 
 function wait_timeout() {
     echo "Waiting for $timeout..."
-    sleep $timeout
+    sleep "$timeout"
 }
 
 function wait_schedule() {
-    local current_epoch=$(date +%s)
+    local current_epoch
+
+    current_epoch=$(date +%s)
 
     # Minimum wait is until the next minute o'clock (with a spare of 10 seconds)
     local current_mins=$(((current_epoch) / 60))
-    local target_mins=$(((current_epoch+10) / 60 + 1))
+    local target_mins=$(((current_epoch + 10) / 60 + 1))
     local reminder=$((target_mins % schedule))
 
-    if [ ! "$reminder" = "0" ] ; then
+    if [ ! "$reminder" = "0" ]; then
         target_mins=$((target_mins + schedule - reminder))
     fi
 
     local delay_mins=$(((target_mins - current_mins)))
 
-    local target_epoch=`date --date="+$delay_mins minutes" +%s`
-    target_epoch=$(((target_epoch/60) * 60))
-    local sleep_seconds=$((target_epoch - current_epoch))
+    local target_epoch
+    local target_epoch_print
+    local sleep_seconds
 
-    local target_epoch_print=`date --date="+$sleep_seconds seconds" '+%Y-%m-%d %H:%M:%S'`
+    target_epoch=$(date --date="+$delay_mins minutes" +%s)
+    target_epoch=$(((target_epoch / 60) * 60))
+    sleep_seconds=$((target_epoch - current_epoch))
+    target_epoch_print=$(date --date="+$sleep_seconds seconds" '+%Y-%m-%d %H:%M:%S')
 
     echo "Wait for scheduled time $target_epoch_print"
     sleep $sleep_seconds
@@ -836,10 +832,9 @@ vswitch_list="pmd vpp ovs basicfwd snabb sriov linux-bridge"
 dimension_list="throughput latency latencyst"
 
 # TODO: READ AN ENVIRONMENT VARIABLE
-SCRIPT_DIR=`realpath $(dirname $0)`
+SCRIPT_DIR=$(realpath "$(dirname "$0")")
 PMD=$HOME/testbed/install/dpdk-19.05/bin/testpmd
 BASICFWD=$HOME/testbed/install/dpdk-19.05/share/dpdk/examples/skeleton/x86_64-native-linuxapp-gcc/basicfwd
-FDIO_DIR=$HOME/testbed/src/vpp
 OVS_DIR=/usr/local/share/openvswitch/scripts
 SNABB="$HOME/testbed/src/snabb/src/snabb custom_switch"
 
@@ -858,7 +853,7 @@ SWITCH_CPUS=0,2
 ################################################################################
 
 default_timeout=60
-default_filename=confrc.bash
+default_filename=conf.confrc
 default_rate=1000000
 default_bst_size=32
 default_pkt_size=64
@@ -868,7 +863,7 @@ default_pkt_size=64
 ################################################################################
 
 dimension=throughput
-outdir=`realpath $(pwd)/out`
+outdir=$(realpath "$(pwd)/out")
 timeout=$default_timeout
 filename=$default_filename
 rate=$default_rate
@@ -894,10 +889,10 @@ parse_parameters "$@"
 check_parameters
 print_configuration
 
-if [ "$test_params" = "1" ] ; then
+if [ "$test_params" = "1" ]; then
     printf "Parameters were correct. Terminating without performing tests.\n"
     linesep
-    exit 0;
+    exit 0
 fi
 
 prepare_system_resources
@@ -909,11 +904,11 @@ prepare_outdir
 start_vswitch
 
 # If scheduled, wait at least 1 minute and for the next multiple of $schedule minutes
-if [ ! "$schedule" = "0" ] ; then
+if [ ! "$schedule" = "0" ]; then
     wait_schedule
 fi
 
-printf "STARTING TEST AT TIME: `date`\n"
+printf 'STARTING TEST AT TIME: %s\n' "$(date)"
 
 start_applications
 
@@ -926,11 +921,11 @@ stop_vswitch
 # Test finished
 printf "Test completed! Check the following files for test results:\n"
 
-for i in "${!LXC_CONT_NAMES[@]}" ; do
+for i in "${!LXC_CONT_NAMES[@]}"; do
     printf "%s\n" "$outdir/${LXC_CONT_NAMES[i]}_${LXC_CONT_CMDNAMES[i]}.log"
 done
-    # "$outdir/${CONT_A}_`get_command_name_cont_a`.log" \
-    # "$outdir/${CONT_B}_`get_command_name_cont_b`.log"
+# "$outdir/${CONT_A}_`get_command_name_cont_a`.log" \
+# "$outdir/${CONT_B}_`get_command_name_cont_b`.log"
 
 linesep
 printf '\n'
