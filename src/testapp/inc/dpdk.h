@@ -122,11 +122,11 @@ static inline byte_t *dpdk_get_payload_offset(struct rte_mbuf *pkt, ssize_t offs
 static inline void dpdk_swap_ether_addr(struct rte_mbuf *pkt)
 {
     struct rte_ether_hdr *ether_hdr_ptr = dpdk_get_ether_hdr(pkt);
-    struct ether_addr *src_mac_ptr = &ether_hdr_ptr->s_addr;
-    struct ether_addr *dst_mac_ptr = &ether_hdr_ptr->d_addr;
-    struct ether_addr support;
+    struct rte_ether_addr *src_mac_ptr = &ether_hdr_ptr->s_addr;
+    struct rte_ether_addr *dst_mac_ptr = &ether_hdr_ptr->d_addr;
+    struct rte_ether_addr support;
 
-    swap_ptrs(src_mac_ptr, dst_mac_ptr, &support, sizeof(struct ether_addr));
+    swap_ptrs(src_mac_ptr, dst_mac_ptr, &support, sizeof(struct rte_ether_addr));
 }
 
 // Swap source with destination ip addresses
@@ -152,11 +152,11 @@ static inline void dpdk_swap_udp_port(struct rte_mbuf *pkt)
 
 // TODO: ORGANIZE THIS MESS!
 static inline void swap_ether_addr(struct rte_ether_hdr *ether_hdr_ptr) {
-    struct ether_addr *src_mac_ptr = &ether_hdr_ptr->s_addr;
-    struct ether_addr *dst_mac_ptr = &ether_hdr_ptr->d_addr;
-    struct ether_addr support;
+    struct rte_ether_addr *src_mac_ptr = &ether_hdr_ptr->s_addr;
+    struct rte_ether_addr *dst_mac_ptr = &ether_hdr_ptr->d_addr;
+    struct rte_ether_addr support;
 
-    swap_ptrs(src_mac_ptr, dst_mac_ptr, &support, sizeof(struct ether_addr));
+    swap_ptrs(src_mac_ptr, dst_mac_ptr, &support, sizeof(struct rte_ether_addr));
 }
 
 static inline void swap_ipv4_addr(struct rte_ipv4_hdr *ipv4_hdr_ptr) {

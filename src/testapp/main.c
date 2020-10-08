@@ -31,5 +31,7 @@ int main(int argc, char *argv[])
         return EXIT_SUCCESS;
     }
 
+    printf("-------- TESTAPP OLD VERSION --------\n");
+
     return run_command(argc - 1, argv + 1);
 }

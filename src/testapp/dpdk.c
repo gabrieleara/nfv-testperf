@@ -53,8 +53,9 @@ static inline uint16_t dpdk_calc_ipv4_checksum(struct rte_ipv4_hdr *ip_hdr) {
 // Setting up ETH, IP and UDP headers for later use
 void dpdk_setup_pkt_headers(struct rte_ether_hdr *eth_hdr,
                             struct rte_ipv4_hdr *ip_hdr,
-                            struct rte_udp_hdr *rte_udp_hdr,
-                            struct config *conf) {
+                            struct rte_udp_hdr *udp_hdr,
+                            struct config *conf)
+{
     uint16_t pkt_len;
     uint16_t payload_len =
         (uint16_t)(conf->pkt_size -
@@ -63,19 +64,19 @@ void dpdk_setup_pkt_headers(struct rte_ether_hdr *eth_hdr,
 
     // Initialize ETH header
     /*
-    rte_ether_addr_copy((struct ether_addr *)conf->local_addr.mac.sll_addr,
+    rte_ether_addr_copy((struct rte_ether_addr *)conf->local_addr.mac.sll_addr,
                         &eth_hdr->s_addr);
-    rte_ether_addr_copy((struct ether_addr *)conf->remote_addr.mac.sll_addr,
+    rte_ether_addr_copy((struct rte_ether_addr *)conf->remote_addr.mac.sll_addr,
                         &eth_hdr->d_addr);
     */
     eth_hdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 
     // Initialize UDP header
     pkt_len = (uint16_t)(payload_len + sizeof(struct rte_udp_hdr));
-    rte_udp_hdr->src_port = rte_cpu_to_be_16(conf->local_port);
-    rte_udp_hdr->dst_port = rte_cpu_to_be_16(conf->remote_port);
-    rte_udp_hdr->dgram_len = rte_cpu_to_be_16(pkt_len);
-    rte_udp_hdr->dgram_cksum = 0; /* No UDP checksum. */
+    udp_hdr->src_port = rte_cpu_to_be_16(conf->local_port);
+    udp_hdr->dst_port = rte_cpu_to_be_16(conf->remote_port);
+    udp_hdr->dgram_len = rte_cpu_to_be_16(pkt_len);
+    udp_hdr->dgram_cksum = 0; /* No UDP checksum. */
 
     // Initialize IP header
     pkt_len = (uint16_t)(pkt_len + sizeof(struct rte_ipv4_hdr));
@@ -266,9 +267,9 @@ int dpdk_init(int argc, char *argv[], struct config *conf)
 int dpdk_advertise_host_mac(struct config *conf)
 {
     // Header structures
-    struct rte_ether_hdr pkt_eth_hdr;
-    struct rte_ipv4_hdr pkt_ip_hdr;
-    struct rte_udp_hdr pkt_udp_hdr;
+    struct rte_ether_hdr pkt_eth_hdr = {0};
+    struct rte_ipv4_hdr pkt_ip_hdr = {0};
+    struct rte_udp_hdr pkt_udp_hdr = {0};
 
     // The message to be sent
     struct rte_mbuf *pkts_burst[1];
