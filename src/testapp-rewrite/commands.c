@@ -79,7 +79,7 @@ static inline int command_body(int argc, char *argv[], const struct config_defau
 
     // Shift arguments, certain NFV sockets may require additional arguments
     // (see DPDK one)
-    argc += res;
+    argc -= res;
     argv += res;
 
     res = config_initialize_socket(&conf, argc, argv);
