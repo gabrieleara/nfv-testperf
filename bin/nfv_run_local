@@ -375,7 +375,10 @@ function start_vswitch() {
         done
         pmd_cmd="$pmd_cmd --no-pci -- --auto-start"
 
-        screen -d -S screen_vswitch $(log_vswitch_option) -m "$pmd_cmd"
+        screen -d -S screen_vswitch $(log_vswitch_option) -m $pmd_cmd
+
+        # Takes more time to start the switch than the containers
+        sleep 80s
 
         # screen -d -S screen_vswitch `log_vswitch_option` -m \
         #     sudo $PMD -l $SWITCH_CPUS -n 2 --socket-mem 1024,1024 \
@@ -523,21 +526,23 @@ function start_vswitch() {
 
         ;;
     sriov)
+        SRIOV_TESTPMD_CONF=/tmp/sriov.conf
+
         # TODO: SCALE SR-IOV
         # FIXME: File in script dir? Hell no
         # Binds SR-IOV devices to DPDK driver and resets them, takes a while
         "$DIR_SCRIPT/nfv_sriov_tools" "$filename" -b igb_uio
 
-        sudo rm "$DIR_SCRIPT/sriov.conf" 2>/dev/null || true
+        sudo rm -f "$SRIOV_TESTPMD_CONF"
         for i in "${!LXC_CONT_NAMES[@]}"; do
-            echo "set vf mac addr 0 $i ${LXC_CONT_MACS[i]}" >>"$DIR_SCRIPT/sriov.conf"
+            echo "set vf mac addr 0 $i ${LXC_CONT_MACS[i]}" >>"$SRIOV_TESTPMD_CONF"
         done
-        echo "" >>"$DIR_SCRIPT/sriov.conf"
+        echo "" >>"$SRIOV_TESTPMD_CONF"
 
         # Start PF handler for PF0
         screen -d -S screen_vswitch $(log_vswitch_option) -m \
             sudo "$PMD" -l "$SWITCH_CPUS" -n 2 --socket-mem 1024,0 --file-prefix=host \
-            -w 04:00.0 -- --cmdline-file="$DIR_SCRIPT/sriov.conf"
+            -w 04:00.0 -- --cmdline-file="${SRIOV_TESTPMD_CONF}"
 
         # Some sleep needed, mabe not 80s, but better safe than sorry
         sleep 80s
@@ -852,8 +857,8 @@ while [ -h "$SOURCE" ]; do
 done
 DIR_SCRIPT="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
 
-PMD=${DIR_DPDK_INSTALL}/bin/testpmd
-BASICFWD=${DIR_DPDK_INSTALL}/share/dpdk/examples/skeleton/${RTE_TARGET}/basicfwd
+PMD=${RTE_INSTALL_PATH}/bin/testpmd
+BASICFWD=${RTE_INSTALL_PATH}/share/dpdk/examples/skeleton/${RTE_TARGET}/app/basicfwd
 OVS_DIR=/usr/local/share/openvswitch/scripts
 SNABB="${NFV_PATH}/src/snabb/src/snabb custom_switch"
 
