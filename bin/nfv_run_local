@@ -36,9 +36,17 @@ function vpp_create_vhost() {
     sleep 1
 
     for i in "${!LXC_CONT_NAMES[@]}"; do
-        if sudo vppctl create vhost-user socket "/tmp/VIO/${LXC_CONT_SOCKS[i]}" server &>/dev/null &&
-            sudo vppctl set interface state "VirtualEthernet0/0/$i" up &>/dev/null &&
-            sudo vppctl set interface l2 bridge "VirtualEthernet0/0/$i" 1 &>/dev/null; then
+        hideout=$(
+            (
+                sudo vppctl create vhost-user socket "/tmp/VIO/${LXC_CONT_SOCKS[i]}" server
+                sudo vppctl set interface state "VirtualEthernet0/0/$i" up
+                sudo vppctl set interface l2 bridge "VirtualEthernet0/0/$i" 1
+            ) 2>&1
+        )
+
+        # TODO: copy worker threads stuff
+
+        if [ $? -ne 0 ]; then
             echo 1
             return
         fi
@@ -367,7 +375,7 @@ function start_vswitch() {
         done
         pmd_cmd="$pmd_cmd --no-pci -- --auto-start"
 
-        screen -d -S screen_vswitch $(log_vswitch_option) -m $pmd_cmd
+        screen -d -S screen_vswitch $(log_vswitch_option) -m "$pmd_cmd"
 
         # screen -d -S screen_vswitch `log_vswitch_option` -m \
         #     sudo $PMD -l $SWITCH_CPUS -n 2 --socket-mem 1024,1024 \
@@ -392,16 +400,16 @@ function start_vswitch() {
         ;;
     vpp)
         # Bind SR-IOV port to right driver
-        "$SCRIPT_DIR/nfv_sriov_tools" "$filename" -b igb_uio
+        "$DIR_SCRIPT/nfv_sriov_tools" "$filename" -b igb_uio
 
         # This command should be executed from fdio directory
         #pushd $FDIO_DIR > /dev/null
         screen -d -S screen_vswitch $(log_vswitch_option) -m \
-            sudo vpp -c ~/testbed/conf/vpp.conf
+            sudo vpp -c ${NFV_PATH}/conf/vpp.conf
         #popd > /dev/null
 
         # TODO: CHANGE
-        #sudo vpp -c ~/testbed/conf/vpp.conf
+        #sudo vpp -c ${NFV_PATH}/conf/vpp.conf
 
         # Configure virtual ports
         # P=$FDIO_DIR/build-root/install-vpp-native/vpp/bin/
@@ -453,7 +461,7 @@ function start_vswitch() {
         sudo ovs-ofctl del-flows dpdk-ovs-br0
 
         # Bind SR-IOV port to right driver
-        "$SCRIPT_DIR/nfv_sriov_tools" "$filename" -b igb_uio
+        "$DIR_SCRIPT/nfv_sriov_tools" "$filename" -b igb_uio
 
         # Add the sriov port to OVS
         sudo ovs-vsctl add-port dpdk-ovs-br0 sriov_dev \
@@ -518,18 +526,18 @@ function start_vswitch() {
         # TODO: SCALE SR-IOV
         # FIXME: File in script dir? Hell no
         # Binds SR-IOV devices to DPDK driver and resets them, takes a while
-        "$SCRIPT_DIR/nfv_sriov_tools" "$filename" -b igb_uio
+        "$DIR_SCRIPT/nfv_sriov_tools" "$filename" -b igb_uio
 
-        sudo rm "$SCRIPT_DIR/sriov.conf" 2>/dev/null || true
+        sudo rm "$DIR_SCRIPT/sriov.conf" 2>/dev/null || true
         for i in "${!LXC_CONT_NAMES[@]}"; do
-            echo "set vf mac addr 0 $i ${LXC_CONT_MACS[i]}" >>"$SCRIPT_DIR/sriov.conf"
+            echo "set vf mac addr 0 $i ${LXC_CONT_MACS[i]}" >>"$DIR_SCRIPT/sriov.conf"
         done
-        echo "" >>"$SCRIPT_DIR/sriov.conf"
+        echo "" >>"$DIR_SCRIPT/sriov.conf"
 
         # Start PF handler for PF0
         screen -d -S screen_vswitch $(log_vswitch_option) -m \
             sudo "$PMD" -l "$SWITCH_CPUS" -n 2 --socket-mem 1024,0 --file-prefix=host \
-            -w 04:00.0 -- --cmdline-file="$SCRIPT_DIR/sriov.conf"
+            -w 04:00.0 -- --cmdline-file="$DIR_SCRIPT/sriov.conf"
 
         # Some sleep needed, mabe not 80s, but better safe than sorry
         sleep 80s
@@ -574,7 +582,7 @@ function stop_vswitch() {
         wait_screen screen_vswitch
 
         # Binds SR-IOV devices to no driver and resets them, takes a while
-        "$SCRIPT_DIR/nfv_sriov_tools" "$filename" -u
+        "$DIR_SCRIPT/nfv_sriov_tools" "$filename" -u
         ;;
     ovs)
         # Simply stop it
@@ -582,7 +590,7 @@ function stop_vswitch() {
         sudo umount /tmp/VIO
 
         # Binds SR-IOV devices to no driver and resets them, takes a while
-        "$SCRIPT_DIR/nfv_sriov_tools" "$filename" -u
+        "$DIR_SCRIPT/nfv_sriov_tools" "$filename" -u
         ;;
     snabb)
         # Signal it to stop with Ctrl+C
@@ -602,7 +610,7 @@ function stop_vswitch() {
         wait_screen screen_vswitch
 
         # Binds SR-IOV devices to no driver and resets them, takes a while
-        "$SCRIPT_DIR/nfv_sriov_tools" "$filename" -u
+        "$DIR_SCRIPT/nfv_sriov_tools" "$filename" -u
         ;;
     linux-bridge)
         # This is not an actual switch, it is just used to start tests using normal kernel sockets
@@ -706,7 +714,7 @@ function prepare_system_resources() {
     sudo umount /tmp/VIO 2>/dev/null || true
     sudo rm /tmp/VIO/sock* 2>/dev/null || true
     sudo modprobe uio || true
-    sudo insmod "$HOME/testbed/install/dpdk-19.05/lib/modules/$(uname -r)/extra/dpdk/igb_uio.ko" 2>/dev/null || true
+    sudo insmod "${RTE_INSTALL_PATH}/lib/modules/$(uname -r)/extra/dpdk/igb_uio.ko" 2>/dev/null || true
     # TODO: add insmod to sriov_tools
 
     # Set processor to high performance, disable turbo boost
@@ -831,12 +839,23 @@ function wait_schedule() {
 vswitch_list="pmd vpp ovs basicfwd snabb sriov linux-bridge"
 dimension_list="throughput latency latencyst"
 
-# TODO: READ AN ENVIRONMENT VARIABLE
-SCRIPT_DIR=$(realpath "$(dirname "$0")")
-PMD=$HOME/testbed/install/dpdk-19.05/bin/testpmd
-BASICFWD=$HOME/testbed/install/dpdk-19.05/share/dpdk/examples/skeleton/x86_64-native-linuxapp-gcc/basicfwd
+# This is used to get reliably the original path of the script
+# Source: https://stackoverflow.com/a/246128/7030275
+SOURCE="${BASH_SOURCE[0]}"
+# Resolve $SOURCE until the file is no longer a symlink
+while [ -h "$SOURCE" ]; do
+    DIR_SCRIPT="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+    SOURCE="$(readlink "$SOURCE")"
+    # If $SOURCE was a relative symlink, we need to resolve it
+    # relative to the path where the symlink file was located
+    [[ $SOURCE != /* ]] && SOURCE="$DIR_SCRIPT/$SOURCE"
+done
+DIR_SCRIPT="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+
+PMD=${DIR_DPDK_INSTALL}/bin/testpmd
+BASICFWD=${DIR_DPDK_INSTALL}/share/dpdk/examples/skeleton/${RTE_TARGET}/basicfwd
 OVS_DIR=/usr/local/share/openvswitch/scripts
-SNABB="$HOME/testbed/src/snabb/src/snabb custom_switch"
+SNABB="${NFV_PATH}/src/snabb/src/snabb custom_switch"
 
 SWITCH_CPUS=0,2
 

@@ -153,10 +153,24 @@ function generate_rcfile() {
 
 THIS_FILE_NAME="\${BASH_SOURCE[0]}"
 
+# This is used to get reliably the original path of the script
+# Source: https://stackoverflow.com/a/246128/7030275
+SOURCE="\${BASH_SOURCE[0]}"
+# Resolve \$SOURCE until the file is no longer a symlink
+while [ -h "\$SOURCE" ]; do
+    DIR_SCRIPT="\$(cd -P "\$(dirname "\$SOURCE")" >/dev/null 2>&1 && pwd)"
+    SOURCE="\$(readlink "\$SOURCE")"
+    # If \$SOURCE was a relative symlink, we need to resolve it
+    # relative to the path where the symlink file was located
+    [[ \$SOURCE != /* ]] && SOURCE="\$DIR_SCRIPT/\$SOURCE"
+done
+DIR_SCRIPT="\$(cd -P "\$(dirname "\$SOURCE")" >/dev/null 2>&1 && pwd)"
+
 # Framework's base directory
-export NFV_PATH=\$(realpath \$(dirname "\$THIS_FILE_NAME"))
+export NFV_PATH=\${DIR_SCRIPT}
 export NFV_CONFPATH=\${NFV_PATH}/conf/rc
 export RTE_SDK=${DIR_DPDK_INSTALL}/share/dpdk/
+export RTE_INSTALL_PATH=${DIR_DPDK_INSTALL}
 export RTE_TARGET=x86_64-native-linuxapp-gcc
 export PATH="\${NFV_PATH}/bin:\${PATH}"
 EOF
@@ -817,8 +831,8 @@ function bin_remove() {
 
 # First argument is the file, second argument is the line
 function add_line_if_missing() {
-    [ -f "$1" ] && [[ "$(grep -c -e "$3" "$1")" -lt 1 ]] &&
-        echo "$2" >>"$1" || true
+    ([ -f "$1" ] && [[ "$(grep -c -e "$3" "$1")" -lt 1 ]] &&
+        echo "$2" >>"$1") || true
 }
 
 function finalize_install() {
@@ -866,12 +880,8 @@ function finalize_install() {
 function main_f() {
     parse_parameters "$@"
 
-    DIR_SCRIPT="$(
-        cd "$(dirname "$0")"
-        pwd -P
-    )"
     DIR_INSTALL_DATA="$DIR_SCRIPT/installdata"
-    DIR_TESTAPP="$DIR_SCRIPT/src/testapp-rewrite"
+    DIR_TESTAPP="$DIR_SCRIPT/src/testapp"
     DIR_CPUMASK="$DIR_SCRIPT/src/cpu_list_to_mask"
     DIR_CONFIGURATIONS="$DIR_SCRIPT/configurations"
     DIR_BIN="$DIR_SCRIPT/bin"
@@ -976,5 +986,18 @@ default=n
 
 set -e
 
-# Only command run on global scope
+# This is used to get reliably the original path of the script
+# Source: https://stackoverflow.com/a/246128/7030275
+SOURCE="${BASH_SOURCE[0]}"
+# Resolve $SOURCE until the file is no longer a symlink
+while [ -h "$SOURCE" ]; do
+    DIR_SCRIPT="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+    SOURCE="$(readlink "$SOURCE")"
+    # If $SOURCE was a relative symlink, we need to resolve it
+    # relative to the path where the symlink file was located
+    [[ $SOURCE != /* ]] && SOURCE="$DIR_SCRIPT/$SOURCE"
+done
+DIR_SCRIPT="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+
+# Only command to run on global scope
 main_f "$@"
