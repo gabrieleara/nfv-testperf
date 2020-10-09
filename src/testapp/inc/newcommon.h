@@ -220,7 +220,7 @@ static inline void dpdk_consume_data_offset(struct rte_mbuf *pkt, ssize_t offset
 
 // Assuming that a packet will always fit into a buffer
 static inline void copy_buf_to_pkt(
-    void *buf, unsigned len, struct rte_mbuf *pkt, unsigned offset)
+    const void *buf, unsigned len, struct rte_mbuf *pkt, unsigned offset)
 {
     rte_memcpy(rte_pktmbuf_mtod_offset(pkt, char *, offset), buf, (size_t)len);
 }
@@ -233,9 +233,9 @@ static inline void copy_pkt_to_buf(
 
 static inline void dpdk_pkt_prepare(struct rte_mbuf *pkt,
                                     struct config *conf,
-                                    struct rte_ether_hdr *pkt_eth_hdr,
-                                    struct rte_ipv4_hdr *pkt_ip_hdr,
-                                    struct rte_udp_hdr *pkt_udp_hdr)
+                                    const struct rte_ether_hdr *pkt_eth_hdr,
+                                    const struct rte_ipv4_hdr *pkt_ip_hdr,
+                                    const struct rte_udp_hdr *pkt_udp_hdr)
 {
     rte_pktmbuf_reset_headroom(pkt);
     pkt->data_len = conf->pkt_size;

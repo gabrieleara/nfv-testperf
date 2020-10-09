@@ -63,12 +63,10 @@ void dpdk_setup_pkt_headers(struct rte_ether_hdr *eth_hdr,
                     sizeof(struct rte_udp_hdr)));
 
     // Initialize ETH header
-    /*
     rte_ether_addr_copy((struct rte_ether_addr *)conf->local_addr.mac.sll_addr,
                         &eth_hdr->s_addr);
     rte_ether_addr_copy((struct rte_ether_addr *)conf->remote_addr.mac.sll_addr,
                         &eth_hdr->d_addr);
-    */
     eth_hdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 
     // Initialize UDP header

@@ -1,5 +1,5 @@
 # variables that can be overwritten from outside
-DIR_ROOTFS	?= ~/testbed/install/rootfs
+DIR_ROOTFS	?= $(NFV_PATH)/install/rootfs
 RTE_TARGET	?= x86_64-native-linuxapp-gcc
 RTE_SDK		?= $(HOME)/Documents/PhD/Projects/testbed/install/dpdk-20.02/share/dpdk
 
