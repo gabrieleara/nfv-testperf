@@ -8,6 +8,7 @@
 #include <rte_errno.h>
 
 #include "config.h"
+#include "dpdk.h"
 
 typedef unsigned int uint_t;
 
@@ -40,7 +41,8 @@ static const struct rte_eth_conf PORT_CONF_INIT = {
  *
  * \return the size of the cache.
  * */
-int get_cache_size(uint_t n_mbufs) {
+static inline int get_cache_size(uint_t n_mbufs)
+{
     /*
      * Idea behind this loop: the biggest divisor is equal to N / the smallest
      * divisor. However, the biggest divisor may be very big, so we keep

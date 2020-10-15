@@ -9,8 +9,8 @@
 
 // This is the only one that behaves differently, in the sense that it is
 // defined like this and not as a wrapper of an init method
-NFV_SIGNATURE(void, init, config_ptr conf) {
-    // TODO: change this method
+NFV_SIGNATURE(void, init, config_ptr conf)
+{
     self->packet_size = conf->pkt_size;
     self->burst_size = conf->bst_size;
     self->payload_size = self->packet_size - PKT_HEADER_SIZE;
@@ -69,7 +69,6 @@ nfv_socket_ptr nfv_socket_factory_get(config_ptr conf) {
     }
 }
 
-// TODO: change to ifndef
 #ifndef USE_FPTRS
 
 #define NFV_CALL_RETURN(self, method, ...)                                     \

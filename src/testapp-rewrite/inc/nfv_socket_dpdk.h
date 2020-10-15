@@ -49,8 +49,8 @@ struct nfv_socket_dpdk {
     int portid;
     struct rte_mempool *mbufs;
 
-    size_t active_buffers; // TODO: = 0;
-    size_t used_buffers;   // TODO: = 0;
+    size_t active_buffers;
+    size_t used_buffers;
 };
 
 #ifdef __cplusplus

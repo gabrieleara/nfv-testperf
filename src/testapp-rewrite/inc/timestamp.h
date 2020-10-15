@@ -11,9 +11,11 @@ typedef uint64_t tsc_t;
 
 extern volatile tsc_t __tsc_last;
 
-/* If I don't delcare this function as extern here I can't see this private DPDK
- * function and to initialize the timer I need to initialize the whole DPDK EAL,
- * which is totally unnecessary in certain cases... */
+/**
+ * If I don't declare this function as extern here I can't see this private
+ * DPDK function and to initialize the timer I need to initialize the whole
+ * DPDK EAL, which is totally unnecessary in some cases...
+ * */
 extern int rte_eal_timer_init(void);
 
 /* ------------------------- FUNCTION  DECLARATIONS ------------------------- */

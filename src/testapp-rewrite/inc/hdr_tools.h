@@ -28,7 +28,7 @@ static inline void pkt_hdr_setup(struct pkt_hdr *hdr, struct config *conf,
     uint16_t payload_len = conf->payload_size;
 
     struct portaddr *dst = (dir == DIR_INCOMING) ? &conf->local : &conf->remote;
-    struct portaddr *src = (dir == DIR_INCOMING) ? &conf->local : &conf->remote;
+    struct portaddr *src = (dir == DIR_INCOMING) ? &conf->remote : &conf->local;
 
     // Initialize ETH header (assumes outgoing packets)
     // FIXME: to print ethernet addresses use rte_ether_format_addr, to read

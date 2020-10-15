@@ -64,8 +64,8 @@ struct nfv_socket_simple {
     struct iovec *iovecs;
     struct mmsghdr *datagrams;
 
-    size_t active_buffers; // TODO: = 0;
-    size_t used_buffers;   // TODO: = 0;
+    size_t active_buffers;
+    size_t used_buffers;
 };
 
 #ifdef __cplusplus

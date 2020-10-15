@@ -269,8 +269,7 @@ static inline int addr_mac_set(struct sockaddr_ll *addr, const char *str,
     addr->sll_family = AF_PACKET;
     addr->sll_protocol = htons(ETH_P_ALL);
     addr->sll_ifindex = (ifname == NULL) ? 0 : if_nametoindex(ifname);
-    addr->sll_halen = sizeof(
-        addr->sll_addr); // TODO: check if it's right, otherwise just put 6 here
+    addr->sll_halen = sizeof(addr->sll_addr);
 
     int res;
 
@@ -438,7 +437,6 @@ static inline int sock_create_dgram(struct config *conf, uint32_t flags) {
     else
         flags &= ~O_NONBLOCK;
 
-    // TODO: check if this should be before or after bind or it does not mind
     if (flags) {
         int oldflags = fcntl(conf->sock_fd, F_GETFL, 0);
         res = fcntl(conf->sock_fd, F_SETFL, oldflags | flags);
@@ -501,7 +499,6 @@ static inline int sock_create_raw(int *sock_fd, const char *ifname,
         return -3;
     }
 
-    // TODO: check if this should be before or after bind or it does not mind
     if (flags) {
         int oldflags = fcntl(*sock_fd, F_GETFL, 0);
         res = fcntl(*sock_fd, F_SETFL, oldflags | flags);
@@ -563,12 +560,15 @@ void config_initialize(struct config *conf,
  * */
 int config_parse_arguments(struct config *conf, int argc, char *argv[]) {
     int argind = 1;
-    char *cmdname = argv[0];
+    conf->cmdname = argv[0];
 
-    if (strstr(cmdname, "dpdk-") != NULL) {
+    if (strstr(conf->cmdname, "dpdk-") != NULL)
+    {
         // Will use DPDK
         conf->sock_type = NFV_SOCK_DPDK;
-    } else {
+    }
+    else
+    {
         // Will use regular sockets... if RAW sockets will be used, the option
         // -R will change this parameter to SOCK_RAW
         conf->sock_type = NFV_SOCK_DGRAM;
@@ -587,30 +587,24 @@ int config_parse_arguments(struct config *conf, int argc, char *argv[]) {
     // addr_port_number_set(conf->local.ip, conf->local.port_number);
     // addr_port_number_set(conf->remote.ip, conf->remote.port_number);
 
-    // TODO: Copy probably not necessary, but whatever
+    // Copy probably not necessary, but whatever
     if (argind < argc)
-        argv[argind] = cmdname;
+        argv[argind] = conf->cmdname;
 
     return argind;
 }
 
 #define UNUSED(x) ((void)x)
-int config_initialize_socket(struct config *conf, int argc, char *argv[]) {
-    UNUSED(argc);
-    UNUSED(argv);
-
-    // TODO: change constants here
+int config_initialize_socket(struct config *conf, int argc, char *argv[])
+{
     switch (conf->sock_type) {
     case NFV_SOCK_DGRAM:
-        // TODO: additional flags?
-        return sock_create_dgram(conf,
-                                 0); // TODO: initialize data structures too
+        // Need additional flags?
+        return sock_create_dgram(conf, 0);
     case NFV_SOCK_RAW:
-        // TODO: additional flags?
-        return sock_create_raw(&conf->sock_fd, conf->local_interf,
-                               0); // TODO: initialize data structures too
+        // Need additional flags?
+        return sock_create_raw(&conf->sock_fd, conf->local_interf, 0);
     case NFV_SOCK_DPDK:
-        // TODO: initialize DPDK stuff here
         return dpdk_init(argc, argv, conf);
     default:
         break;
@@ -675,25 +669,3 @@ void config_print(struct config *conf) {
 
     printf("-------------------------------------\n");
 }
-
-// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-// // TODO: MAKE THIS THE SINGLE POINT TO CREATE THE "SOCKET" FOR THE MAIN
-// FUNCTION
-// /**
-//  * Creates an nfv_socket structure from the given configuration.
-//  * */
-// static inline int sock_create(struct config *conf, uint32_t flags)
-// {
-//     switch (conf->socktype)
-//     {
-//     case SOCK_DGRAM:
-//         return sock_create_dgram(&conf->sock_fd, &conf->local.ip, 0); //
-//         TODO: flags?
-//     case SOCK_RAW:
-//         return sock_create_raw(&conf->sock_fd, conf->local_interf, flags);
-//     }
-
-//     assert(false);
-//     return -1;
-// }

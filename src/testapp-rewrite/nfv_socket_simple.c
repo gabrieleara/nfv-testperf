@@ -81,7 +81,6 @@ NFV_SIMPLE_SIGNATURE(void, init, config_ptr conf) {
     // automatically using connected sockets. For RAW sockets, we will build
     // a common header to be used by all packets.
 
-    // TODO: probably frame_hdr riesco a tenerlo all'interno del costruttore
     if (sself->is_raw) {
         pkt_hdr_setup(&sself->incoming_hdr, conf, DIR_INCOMING);
         pkt_hdr_setup(&sself->outgoing_hdr, conf, DIR_OUTGOING);
@@ -108,7 +107,6 @@ NFV_SIMPLE_SIGNATURE(void, init, config_ptr conf) {
         // time, to save some time later if possible
 
         // If using raw sockets, copy frame header into each packet
-        // TODO: this operation needed only for outgoing packets
         for (size_t i = 0; i < self->burst_size; ++i)
             rte_memcpy(sself->packets[i], sself->frame_hdr, PKT_HEADER_SIZE);
     }
@@ -259,14 +257,14 @@ NFV_SIMPLE_SIGNATURE(ssize_t, send_back, size_t howmany) {
         for (size_t i = 0; i < howmany; ++i) {
             size_t j = i + sself->used_buffers;
 
-            swap_ether_addr((struct rte_ether_hdr *)sself->packets[j] +
-                            OFFSET_PKT_ETHER);
-            swap_ipv4_addr((struct rte_ipv4_hdr *)sself->packets[j] +
-                           OFFSET_PKT_IPV4);
-            swap_udp_port((struct rte_udp_hdr *)sself->packets[j] +
-                          OFFSET_PKT_UDP);
+            swap_ether_addr((struct rte_ether_hdr *)(sself->packets[j] +
+                                                     OFFSET_PKT_ETHER));
+            swap_ipv4_addr((struct rte_ipv4_hdr *)(sself->packets[j] +
+                                                   OFFSET_PKT_IPV4));
+            swap_udp_port((struct rte_udp_hdr *)(sself->packets[j] +
+                                                 OFFSET_PKT_UDP));
 
-            ip_hdr = (struct rte_ipv4_hdr *)sself->packets[j] + OFFSET_PKT_IPV4;
+            ip_hdr = (struct rte_ipv4_hdr *)(sself->packets[j] + OFFSET_PKT_IPV4);
             ip_hdr->hdr_checksum = 0;
             ip_hdr->hdr_checksum = rte_ipv4_cksum(ip_hdr);
         }

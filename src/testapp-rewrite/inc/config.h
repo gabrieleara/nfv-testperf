@@ -108,6 +108,8 @@ struct config {
 
     struct dpdk_conf
         dpdk; /* DPDK-related configuration only (NFC_SOCK_DPDK only) */
+
+    char *cmdname;
 };
 
 struct config_defaults_triple {
@@ -134,7 +136,9 @@ extern int config_initialize_socket(struct config *conf, int argc,
                                     char *argv[]);
 extern void config_print(struct config *conf);
 
-#define PKT_SIZE_TO_PAYLOAD(pkt_size) (pkt_size - PKT_HEADER_SIZE)
+#define PKT_SIZE_TO_PAYLOAD(pkt_size) ((pkt_size)-PKT_HEADER_SIZE)
+
+#define USE_DPDK(conf) ((conf)->sock_type == NFV_SOCK_DPDK)
 
 #ifdef __cplusplus
 } // extern "C"

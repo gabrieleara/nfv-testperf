@@ -16,10 +16,10 @@ extern void handle_sigint(int sig);
 
 /* ---------------------- LOOP FUNCTIONS  DECLARATIONS ---------------------- */
 
-extern void tsc_loop(void *) __attribute__((noreturn));
-extern void send_loop(struct config *conf) __attribute__((noreturn));
-extern void recv_loop(struct config *conf) __attribute__((noreturn));
-extern void server_loop(struct config *conf) __attribute__((noreturn));
-extern void pong_loop(struct config *conf) __attribute__((noreturn));
+extern int tsc_loop(void *) __attribute__((noreturn));
+extern int send_loop(void *) __attribute__((noreturn));
+extern int recv_loop(void *) __attribute__((noreturn));
+extern int server_loop(void *) __attribute__((noreturn));
+extern int client_loop(void *) __attribute__((noreturn));
 
 #endif /* LOOPS_H */
