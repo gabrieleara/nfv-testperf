@@ -497,6 +497,10 @@ function dpdk_install() {
     # Changing a configuration setting for i40e driver
     sed -i -E "s/CONFIG_RTE_LIBRTE_I40E_16BYTE_RX_DESC=n/CONFIG_RTE_LIBRTE_I40E_16BYTE_RX_DESC=y/" "$DIR_DPDK_SRC/config/common_base"
 
+    # Changing a configuration setting for igb_uio driver
+    # (which is not built by default)
+    sed -i -E "s/CONFIG_RTE_EAL_IGB_UIO=n/CONFIG_RTE_EAL_IGB_UIO=y/" "$DIR_DPDK_SRC/config/common_base"
+
     rm -rf "$DIR_DPDK_BUILD"
     rm -rf "$DIR_DPDK_INSTALL"
 
@@ -881,7 +885,7 @@ function main_f() {
     parse_parameters "$@"
 
     DIR_INSTALL_DATA="$DIR_SCRIPT/installdata"
-    DIR_TESTAPP="$DIR_SCRIPT/src/testapp"
+    DIR_TESTAPP="$DIR_SCRIPT/src/testapp-rewrite"
     DIR_CPUMASK="$DIR_SCRIPT/src/cpu_list_to_mask"
     DIR_CONFIGURATIONS="$DIR_SCRIPT/configurations"
     DIR_BIN="$DIR_SCRIPT/bin"
