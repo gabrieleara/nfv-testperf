@@ -15,7 +15,7 @@ Detailed information about this framework, the motivations behind its developmen
 To install this framework you have to clone this repository first.
 Currently, the installation process of the framework requires a Debian-based Linux distribution (it uses `apt` manager to install many dependencies) and it is currently developed and tested on top of an Ubuntu distribution.
 
-Before running the [install.bash](install.bash) script, make sure that the configuration file [lxcconfrc.bash](installdata/lxcconfrc.bash) is compatible with your system and provides everything you need.
+Before running the [nfv_install.bash](nfv_install.bash) script, make sure that the configuration file [lxcconfrc.bash](installdata/lxcconfrc.bash) is compatible with your system and provides everything you need.
 
 Once you are done, you can install the whole framework by running
 ```sh
