@@ -19,7 +19,7 @@ Before running the [install.bash](install.bash) script, make sure that the confi
 
 Once you are done, you can install the whole framework by running
 ```sh
-./install.bash
+./nfv_install.bash
 ```
 
 The following parameters are accepted, in no particular order:
@@ -33,7 +33,7 @@ A few additional notes on the installation script:
  - It uses multiple times the `sudo` command, so make sure you have `sudo` privileges and insert your password when prompted; you can check the script source code if you are worried about trusting some random script with your password.
  - There is a point in which the installation script may fail without a decent reason. This is a well-known issue and it can be easily fixed by running a second time the installation script with the same parameters. The script will skip all the parts that are already installed and resume from the interruption point. If you want you can even run the installation script the first time using the following command, which will automatically run a second time if an error occurs:
  ```sh
-    ./install.bash || ./install.bash
+    ./nfv_install.bash || ./nfv_install.bash
  ```
 
 ## Usage
