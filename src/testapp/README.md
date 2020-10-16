@@ -6,7 +6,7 @@ This directory contains the source code for the testing application, used to gen
 
 To build this application, DPDK must be installed in the system and the `RTE_SDK` exported environment variable must be set.
 
-In addition, to install this application in the desired `rootfs` the `DIR_ROOTFS` exported environment variable must be set too.
+In addition, to install this application in the desired `rootfs` the `NFV_PATH` exported environment variable must be set too.
 
 ## Application structure
 
