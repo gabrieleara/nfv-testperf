@@ -6,7 +6,7 @@ Following is the description of the content of this folder. The only file that s
 
 Each script should provide a `--help` command-line option to illustrate its usage. Examples of usage of the [run_testset.bash](run_testset.bash) script can be found in [test_examples.bash](test_examples.bash).
 
-## [run_testset.bash](run_testset.bash)
+## [sriov_tools.bash](sriov_tools.bash)
 
 This is an utility script that is used by the [run_local_test.bash](run_local_test.bash) file to configure SR-IOV devices.
 
