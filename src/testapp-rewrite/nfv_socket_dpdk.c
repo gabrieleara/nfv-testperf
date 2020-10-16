@@ -46,8 +46,7 @@ static inline void dpdk_swap_udp_port(struct rte_mbuf *pkt) {
 static inline NFV_DPDK_SIGNATURE(void, free_buffers) {
     struct nfv_socket_dpdk *sself = (struct nfv_socket_dpdk *)(self);
     for (; unlikely(sself->used_buffers < sself->active_buffers);
-         ++sself->used_buffers)
-    {
+         ++sself->used_buffers) {
         rte_pktmbuf_free(sself->packets[sself->used_buffers]);
     }
     sself->used_buffers = 0;
@@ -183,8 +182,7 @@ NFV_DPDK_SIGNATURE(ssize_t, recv, buffer_t buffers[], size_t howmany) {
     // something to do with the incoming packets.
     if (likely(num_recv > 0)) {
         // Filter-out packets NOT meant for this application
-        for (i = 0; i < num_recv; ++i)
-        {
+        for (i = 0; i < num_recv; ++i) {
             const struct pkt_hdr *header =
                 dpdk_packet_start(sself->packets[i], struct pkt_hdr *);
 
@@ -226,8 +224,8 @@ NFV_DPDK_SIGNATURE(ssize_t, send_back, size_t howmany) {
 
         byte_t *packet_start = dpdk_packet_start(sself->packets[j], byte_t *);
 
-        swap_ether_addr((struct rte_ether_hdr *)(packet_start +
-                                                 OFFSET_PKT_ETHER));
+        swap_ether_addr(
+            (struct rte_ether_hdr *)(packet_start + OFFSET_PKT_ETHER));
         swap_ipv4_addr((struct rte_ipv4_hdr *)(packet_start + OFFSET_PKT_IPV4));
         swap_udp_port((struct rte_udp_hdr *)(packet_start + OFFSET_PKT_UDP));
 

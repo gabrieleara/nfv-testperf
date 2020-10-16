@@ -25,31 +25,13 @@ extern int send_body(int argc, char *argv[]);
 typedef int (*main_body_t)(int, char **);
 
 static const char *const commands_n[] = {
-    "server",
-    "client",
-    "clientst",
-    "send",
-    "recv",
-
-    "dpdk-server",
-    "dpdk-client",
-    "dpdk-clientst",
-    "dpdk-send",
-    "dpdk-recv",
+    "server",      "client",      "clientst",      "send",      "recv",
+    "dpdk-server", "dpdk-client", "dpdk-clientst", "dpdk-send", "dpdk-recv",
 };
 
 static const main_body_t commands_f[] = {
-    server_body,
-    client_body,
-    clientst_body,
-    send_body,
-    recv_body,
-
-    server_body,
-    client_body,
-    clientst_body,
-    send_body,
-    recv_body,
+    server_body, client_body, clientst_body, send_body, recv_body,
+    server_body, client_body, clientst_body, send_body, recv_body,
 };
 
 static const int num_commands = sizeof(commands_f) / sizeof(main_body_t);

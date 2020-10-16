@@ -1,5 +1,5 @@
-#ifndef PKT_UTIL_H
-#define PKT_UTIL_H
+#ifndef PAYLOAD_UTIL_H
+#define PAYLOAD_UTIL_H
 
 #include <endian.h>
 #include <rte_memcpy.h>
@@ -35,7 +35,8 @@ static inline bool consume_data(void *payload_v, size_t size) {
     byte_t *payload = (byte_t *)payload_v;
     byte_t sum = 0;
 
-    if (size == 0) return true;
+    if (size == 0)
+        return true;
 
     for (size_t i = 0; i < size; ++i) {
         sum += payload[i];
@@ -78,4 +79,4 @@ static inline uint64_t get_i64_offset(void *data, size_t offset) {
 } // extern "C"
 #endif
 
-#endif // PKT_UTIL_H
+#endif // PAYLOAD_UTIL_H

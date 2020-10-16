@@ -257,14 +257,15 @@ NFV_SIMPLE_SIGNATURE(ssize_t, send_back, size_t howmany) {
         for (size_t i = 0; i < howmany; ++i) {
             size_t j = i + sself->used_buffers;
 
-            swap_ether_addr((struct rte_ether_hdr *)(sself->packets[j] +
-                                                     OFFSET_PKT_ETHER));
-            swap_ipv4_addr((struct rte_ipv4_hdr *)(sself->packets[j] +
-                                                   OFFSET_PKT_IPV4));
-            swap_udp_port((struct rte_udp_hdr *)(sself->packets[j] +
-                                                 OFFSET_PKT_UDP));
+            swap_ether_addr(
+                (struct rte_ether_hdr *)(sself->packets[j] + OFFSET_PKT_ETHER));
+            swap_ipv4_addr(
+                (struct rte_ipv4_hdr *)(sself->packets[j] + OFFSET_PKT_IPV4));
+            swap_udp_port(
+                (struct rte_udp_hdr *)(sself->packets[j] + OFFSET_PKT_UDP));
 
-            ip_hdr = (struct rte_ipv4_hdr *)(sself->packets[j] + OFFSET_PKT_IPV4);
+            ip_hdr =
+                (struct rte_ipv4_hdr *)(sself->packets[j] + OFFSET_PKT_IPV4);
             ip_hdr->hdr_checksum = 0;
             ip_hdr->hdr_checksum = rte_ipv4_cksum(ip_hdr);
         }

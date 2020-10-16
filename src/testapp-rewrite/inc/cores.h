@@ -1,9 +1,9 @@
 #ifndef CORES_H
 #define CORES_H
 
+#include "config.h"
 #include <pthread.h>
 #include <rte_config.h>
-#include "config.h"
 
 #define CORE_MAX RTE_MAX_LCORE
 
@@ -36,8 +36,8 @@ extern core_t cores_count(struct config *conf);
  * Use this to iterate through the list of cores. If possible, prefer the two
  * macros provided by this header file, CORES_FOREACH and CORES_FOREACH_SLAVE.
  * */
-extern core_t cores_next(struct config *conf, core_t i,
-                         int skip_master, int wrap);
+extern core_t cores_next(struct config *conf, core_t i, int skip_master,
+                         int wrap);
 
 /******************************************************************************/
 
@@ -45,9 +45,8 @@ extern core_t cores_next(struct config *conf, core_t i,
  * Do not use this directly, prefer the other two macros CORES_FOREACH and
  * CORES_FOREACH_SLAVE.
  * */
-#define CORES_FOREACH_(conf, i, skipmaster)       \
-    for (i = cores_next(conf, -1, skipmaster, 0); \
-         i < CORE_MAX;                            \
+#define CORES_FOREACH_(conf, i, skipmaster)                                    \
+    for (i = cores_next(conf, -1, skipmaster, 0); i < CORE_MAX;                \
          i = cores_next(conf, i, skipmaster, 0))
 
 /**

@@ -562,13 +562,10 @@ int config_parse_arguments(struct config *conf, int argc, char *argv[]) {
     int argind = 1;
     conf->cmdname = argv[0];
 
-    if (strstr(conf->cmdname, "dpdk-") != NULL)
-    {
+    if (strstr(conf->cmdname, "dpdk-") != NULL) {
         // Will use DPDK
         conf->sock_type = NFV_SOCK_DPDK;
-    }
-    else
-    {
+    } else {
         // Will use regular sockets... if RAW sockets will be used, the option
         // -R will change this parameter to SOCK_RAW
         conf->sock_type = NFV_SOCK_DGRAM;
@@ -595,8 +592,7 @@ int config_parse_arguments(struct config *conf, int argc, char *argv[]) {
 }
 
 #define UNUSED(x) ((void)x)
-int config_initialize_socket(struct config *conf, int argc, char *argv[])
-{
+int config_initialize_socket(struct config *conf, int argc, char *argv[]) {
     switch (conf->sock_type) {
     case NFV_SOCK_DGRAM:
         // Need additional flags?

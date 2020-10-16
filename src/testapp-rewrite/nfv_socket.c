@@ -9,8 +9,7 @@
 
 // This is the only one that behaves differently, in the sense that it is
 // defined like this and not as a wrapper of an init method
-NFV_SIGNATURE(void, init, config_ptr conf)
-{
+NFV_SIGNATURE(void, init, config_ptr conf) {
     self->packet_size = conf->pkt_size;
     self->burst_size = conf->bst_size;
     self->payload_size = self->packet_size - PKT_HEADER_SIZE;
