@@ -64,6 +64,28 @@ static const struct config_defaults defaults_recv = {
     },
 };
 
+static inline void perror_exit(const char *fmt, ...)
+    __attribute__((noreturn, format(printf, 1, 2)));
+
+static inline void perror_exit(const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    vfprintf(stderr, fmt, args);
+    va_end(args);
+    exit(EXIT_FAILURE);
+}
+
+static inline core_t check_cores(
+    struct config *conf, core_t *const needed_cores)
+{
+    if (cores_count(conf) < *needed_cores)
+        perror_exit("ERR: Need more cores; available %d, needed %d.\n",
+                    cores_count(conf), *needed_cores);
+
+    return *needed_cores;
+}
+
 static inline int command_body(int argc, char *argv[],
                                const struct config_defaults *defaults,
                                const thread_body_t loops[],
@@ -73,12 +95,10 @@ static inline int command_body(int argc, char *argv[],
 
     config_initialize(&conf, defaults);
 
+    // Needs at least program name, hence res must be > 0
     int res = config_parse_arguments(&conf, argc, argv);
     if (res <= 0)
-    {
-        fprintf(stderr, "ERR: Could not parse arguments correctly!");
-        return EXIT_FAILURE;
-    }
+        perror_exit("ERR: Could not parse arguments correctly!");
 
     config_print(&conf);
 
@@ -101,26 +121,15 @@ static inline int command_body(int argc, char *argv[],
     // configuration and sockets
     cores_init(&conf);
 
-    core_t num_cores = cores_count(&conf);
-
-    // Check that the user started the application with enough cores
-    if (num_cores < (core_t)howmany_loops + 1)
-    {
-        fprintf(stderr,
-                "ERROR: Needs more cores. Available %d. Needed %d.\n",
-                num_cores,
-                howmany_loops + 1);
-        return EXIT_FAILURE;
-    }
-
-    if (num_cores > (core_t)howmany_loops + 1)
-        num_cores = (core_t)howmany_loops + 1;
+    // Check that the user started the application with the right number of
+    // cores
+    core_t num_cores = check_cores(&conf, (core_t *)&howmany_loops);
 
     // Prepare the data for each worker. NOTICE: the last worker shall be
     // executed on the master core by setting this thread affinity to the
     // master core and running the function
 
-    struct thread_info workers_info[howmany_loops + 1];
+    struct thread_info workers_info[howmany_loops];
 
     core_t i = 0;
     core_t core_id;
@@ -133,66 +142,53 @@ static inline int command_body(int argc, char *argv[],
         if (i >= num_cores - 1)
             break;
 
-        if (i == 0)
-        {
-            workers_info[i] = (struct thread_info){
-                core_id,
-                tsc_loop,
-                0,
-                NULL};
-        }
-        else
-        {
-            workers_info[i] = (struct thread_info){
-                core_id,
-                loops[i - 1],
-                0,
-                &conf};
-        }
+        workers_info[i] = (struct thread_info){
+            core_id,
+            loops[i],
+            0,
+            &conf};
         ++i;
     }
 
     // This last loop will run on the master core
     workers_info[i] = (struct thread_info){
         cores_get_master(&conf),
-        loops[i - 1],
+        loops[i],
         0,
         &conf};
+
+    printf("-------------------------------------\n");
+    printf("STARTING WORKER THREADS...\n");
 
     // Start all workers on the slave cores (first N workers)
     for (i = 0; i < num_cores - 1; ++i)
     {
         res = thread_start(&conf, &workers_info[i]);
         if (res)
-        {
-            fprintf(
-                stderr,
-                "Failed to start worker thread number %d of %d. Cause: %s\n",
-                i + 1,
-                howmany_loops + 1,
-                strerror(errno));
-            return EXIT_FAILURE;
-        }
-
-        // To "ensure" that the TSC thread will be already running before
-        // spawining the other worker threads
-        if (i == 0)
-            sleep(1);
+            perror_exit(
+                "ERR: failed to start worker thread %d/%d.\nCause: %s\n",
+                i, howmany_loops, strerror(errno));
     }
 
-    // Run the last worker on the current thread, after setting its affinity to
-    // the master core
-    // TODO: check if this works, even if you believe it should
-    cores_setaffinity(workers_info[num_cores - 1].core_id);
+    printf("\n");
+
+    if (!USE_DPDK(&conf))
+    {
+        // Run the last worker on the current thread, after setting its affinity to
+        // the master core
+        // TODO: check if this works, even if you believe it should
+        cores_setaffinity(workers_info[num_cores - 1].core_id);
+    }
+
+    printf("STARTING FUNCTION ON MASTER THREAD...\n");
+    printf("-------------------------------------\n");
 
     // Run the worker on the current thread
     workers_info[num_cores - 1].tbody(workers_info[num_cores - 1].arg);
 
     // Finally, wait for termination of all other worker threads
-    for (i = 0; i < num_cores; ++i)
-    {
-        /* res = */ thread_join(&conf, &workers_info[i], NULL);
-    }
+    for (i = 0; i < num_cores - 1; ++i)
+        thread_join(&conf, &workers_info[i], NULL);
 
     return EXIT_SUCCESS;
 }
@@ -220,7 +216,11 @@ int server_body(int argc, char *argv[])
 
 int client_body(int argc, char *argv[])
 {
-    thread_body_t loops[] = {send_loop, client_loop};
+    thread_body_t loops[] = {
+        tsc_loop,
+        client_loop,
+        send_loop,
+    };
     int howmany_loops = sizeof(loops) / sizeof(thread_body_t);
     return command_body(argc, argv, &defaults_client, loops, howmany_loops);
 }

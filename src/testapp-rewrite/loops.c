@@ -209,6 +209,8 @@ int send_loop(void *arg)
     const bool should_save_stats = !conf->silent ||
                                    !(strstr(conf->cmdname, "client") != NULL);
 
+    const bool should_read_tsc = !(strstr(conf->cmdname, "client") != NULL);
+
     /* ------------------- Variables and data structures -------------------- */
 
     // Pointer to payload buffers
@@ -230,13 +232,24 @@ int send_loop(void *arg)
 
     /* ------------------ Infinite loop variables and body ------------------ */
 
-    tsc_prev = tsc_cur = tsc_next = tsc_get_last();
+    if (should_read_tsc)
+        tsc_prev = tsc_cur = tsc_next = tsc_read();
+    else
+    {
+        do
+        {
+            tsc_prev = tsc_cur = tsc_next = tsc_get_last();
+        } while (tsc_cur == 0);
+    }
 
     ssize_t num_sent;
 
     for (ever)
     {
-        tsc_cur = tsc_get_last();
+        if (should_read_tsc)
+            tsc_cur = tsc_read();
+        else
+            tsc_cur = tsc_get_last();
 
         // If more than a second elapsed
         if (tsc_cur - tsc_prev > tsc_out)
@@ -305,11 +318,11 @@ int recv_loop(void *arg)
 
     ssize_t num_recv;
 
-    tsc_cur = tsc_prev = tsc_get_last();
+    tsc_cur = tsc_prev = tsc_read();
 
     for (ever)
     {
-        tsc_cur = tsc_get_last();
+        tsc_cur = tsc_read();
 
         // If more than a second elapsed, print stats
         if (tsc_cur - tsc_prev > tsc_out)
@@ -345,6 +358,7 @@ int client_loop(void *arg)
     const tsc_t tsc_incr = tsc_hz * conf->bst_size / conf->rate;
 
     const bool send_in_this_thread = strstr(conf->cmdname, "clientst") != NULL;
+    const bool should_read_tsc = send_in_this_thread;
 
     /* ------------------- Variables and data structures -------------------- */
 
@@ -370,11 +384,22 @@ int client_loop(void *arg)
 
     ssize_t num_recv;
 
-    tsc_cur = tsc_prev = tsc_next = tsc_get_last();
+    if (should_read_tsc)
+        tsc_cur = tsc_prev = tsc_next = tsc_read();
+    else
+    {
+        do
+        {
+            tsc_prev = tsc_cur = tsc_next = tsc_get_last();
+        } while (tsc_cur == 0);
+    }
 
     for (ever)
     {
-        tsc_cur = tsc_get_last();
+        if (should_read_tsc)
+            tsc_cur = tsc_read();
+        else
+            tsc_cur = tsc_get_last();
 
         // If more than a second elapsed
         if (tsc_cur - tsc_prev > tsc_out)
@@ -401,7 +426,10 @@ int client_loop(void *arg)
         for (ssize_t i = 0; i < num_recv; ++i)
         {
             tsc_pkt = get_i64_offset(buffers[i], 0);
-            tsc_cur = tsc_get_last();
+            if (should_read_tsc)
+                tsc_cur = tsc_read();
+            else
+                tsc_cur = tsc_get_last();
 
             // NOTICE: With this, packets with more than 0.1s delay are
             // considered dropped

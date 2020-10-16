@@ -25,6 +25,11 @@ static inline int tsc_init(void)
     return rte_eal_timer_init();
 }
 
+static inline tsc_t tsc_read(void)
+{
+    return rte_rdtsc();
+}
+
 static inline tsc_t tsc_get_last(void)
 {
     return __tsc_last;
@@ -32,7 +37,7 @@ static inline tsc_t tsc_get_last(void)
 
 static inline tsc_t tsc_get_update(void)
 {
-    return (__tsc_last = rte_rdtsc());
+    return (__tsc_last = tsc_read());
 }
 
 static inline tsc_t tsc_get_hz(void)
