@@ -1,12 +1,12 @@
 # variables that can be overwritten from outside
-DIR_ROOTFS	?= $(NFV_PATH)/install/rootfs
-RTE_TARGET	?= x86_64-native-linuxapp-gcc
-RTE_SDK		?= $(HOME)/Documents/PhD/Projects/testbed/install/dpdk-20.02/share/dpdk
+DIR_ROOTFS      ?= $(NFV_PATH)/install/rootfs
+RTE_TARGET      ?= x86_64-native-linuxapp-gcc
+RTE_SDK         ?= $(NFV_INSTALLPATH)/dpdk-20.02/share/dpdk
 
 # variables needed to include header files
-THIS_FILE		:= $(lastword $(MAKEFILE_LIST))
-THIS_FILE_ABS	:= $(abspath $(THIS_FILE))
-THIS_DIR		:= $(dir $(THIS_FILE_ABS))
+THIS_FILE       := $(lastword $(MAKEFILE_LIST))
+THIS_FILE_ABS   := $(abspath $(THIS_FILE))
+THIS_DIR        := $(dir $(THIS_FILE_ABS))
 
 #.PHONY: print_vars
 #print_vars:
@@ -16,17 +16,16 @@ THIS_DIR		:= $(dir $(THIS_FILE_ABS))
 include $(RTE_SDK)/mk/rte.vars.mk
 
 # target name
-APP		= testapp
+APP             = testapp
 
 # source files
-SRCS-y		+= main.c common.c stats.c timestamp.c dpdk.c
-SRCS-y		+= server.c client.c clientst.c send.c recv.c
-SRCS-y		+= dpdk-server.c dpdk-client.c dpdk-clientst.c dpdk-send.c dpdk-recv.c
+SRCS-y          += main.c common.c stats.c timestamp.c dpdk.c
+SRCS-y          += server.c client.c clientst.c send.c recv.c
+SRCS-y          += dpdk-server.c dpdk-client.c dpdk-clientst.c dpdk-send.c dpdk-recv.c
 
 # do I need override on CFLAGS? also, change -O2 to -ggdb -O0 when debug
-CPPFLAGS	+= -iquote $(THIS_DIR)/inc
-CFLAGS		+= -Wall -Wextra -pedantic -Werror -march=native -O3 # -O0 -ggdb
-#LDFLAGS		+= -pthread
+CPPFLAGS        += -iquote $(THIS_DIR)/inc
+CFLAGS          += -Wall -Wextra -pedantic -Werror -march=native -O3 # -O0 -ggdb
 
 # dpdk external app makefile
 include $(RTE_SDK)/mk/rte.extapp.mk
