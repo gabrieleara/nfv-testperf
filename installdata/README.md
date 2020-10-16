@@ -1,6 +1,6 @@
 # Installation Data Directory
 
-This folder contains some data that is used by the [installation script](../install.bash) to generate additional content according to certain configurations or to install some other custom applications.
+This folder contains some data that is used by the [installation script](../nfv_install.bash) to generate additional content according to certain configurations or to install some other custom applications.
 
 Following is the description of each file contained in this folder.
 
