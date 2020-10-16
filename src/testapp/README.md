@@ -1,6 +1,8 @@
-# Testing Application
+# Testing Application (DEPRECATED VERSION)
 
 This directory contains the source code for the testing application, used to generate/consume synthetic network traffic.
+
+> This version is deprecated, refer to the [rewritten version](../testapp-rewrite) of this app for updated details. This version still works for simple sockets and DPDK, but it has a drastically different internal structure.
 
 ## Dependencies
 
