@@ -21,7 +21,7 @@ static inline int cores_first(struct config *conf) {
 /**
  * Returns the affinity set of the current thread.
  * */
-static inline cpu_set_t cores_getaffinity() {
+static inline cpu_set_t cores_getaffinity(void) {
     cpu_set_t set;
     if (pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &set))
         CPU_ZERO(&set);

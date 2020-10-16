@@ -84,7 +84,7 @@ static inline void perror_exit(const char *fmt, ...) {
 }
 
 static inline core_t check_cores(struct config *conf,
-                                 core_t *const needed_cores) {
+                                 const core_t *const needed_cores) {
     if (cores_count(conf) < *needed_cores)
         perror_exit("ERR: Need more cores; available %d, needed %d.\n",
                     cores_count(conf), *needed_cores);
@@ -128,7 +128,7 @@ static inline int command_body(int argc, char *argv[],
 
     // Check that the user started the application with the right number of
     // cores
-    core_t num_cores = check_cores(&conf, (core_t *)&howmany_loops);
+    core_t num_cores = check_cores(&conf, (const core_t *const) &howmany_loops);
 
     // Prepare the data for each worker. NOTICE: the last worker shall be
     // executed on the master core by setting this thread affinity to the
