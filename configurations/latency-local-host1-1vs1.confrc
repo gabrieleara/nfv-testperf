@@ -1,8 +1,8 @@
 #!/bin/bash
 
 LXC_CONT_NAMES=(        \
-    dpdk_c0             \
-    dpdk_c1             \
+    dpdk_three0         \
+    dpdk_three1         \
 )
 
 LXC_CONT_VFS=(          \
@@ -52,6 +52,6 @@ LXC_CONT_OTHER_MACS=(   \
 
 # Can be either send, recv, client, clientst, server
 LXC_CONT_CMDNAMES=(     \
-    clientst            \
+    client              \
     server              \
 )
