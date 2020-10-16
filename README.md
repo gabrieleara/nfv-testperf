@@ -38,7 +38,7 @@ A few additional notes on the installation script:
 
 ## Usage
 
-For more details about how to use this framework refer to the [scripts](scripts) directory (which is NOT installed to a specific directory on the system, only framework dependencies and tools are installed).
+For more details about how to use this framework refer to [bin](bin) directory (which is also installed during framework installation to a custom directory on the file system), all the commands included in that directory should be available in your PATH as soon as the installation is done (may require logout and login to apply).
 
 ## Extending and Contributing
 
